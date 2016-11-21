@@ -71,9 +71,8 @@ loadParticipantAnnotationData <- function(indata){
 #' @importFrom dplyr "%>%"
 #' @export
 getattention <- function(time, annotationdata){
-  attention <- annotationdata[annotationdata$time <= time,] %>%
-    dplyr::summarise(dplyr::last(attentionlocation))
 
+  attention <- tail(annotationdata[annotationdata$time <= time, "attentionlocation"], n=1)
   return(as.numeric(attention))
 }
 
