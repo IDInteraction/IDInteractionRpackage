@@ -1,3 +1,12 @@
+# Copyright (c) 2016 The University of Manchester, UK.
+#
+# Licenced under LGPL version 2.1. See LICENCE for details.
+#
+# The IDInteraction Attention Classification was developed in the IDInteraction project, funded by the Engineering and Physical Sciences Research Council, UK through grant agreement number EP/M017133/1.
+#
+# Author: David Mawdsley
+
+
 #'  Load participant tracking data
 #'
 #'  Load the participant tracking data.  Assumes csv data is in "full" format
@@ -77,6 +86,13 @@ getattention <- function(time, annotationdata){
 #' @export
 annotateTracking <- function(trackingdata, annotationdata){
 
+  # From Aitor's code:
+  ##############TIME SHIFT FIX
+  #It was found that there was a mismatch between the tracking and the annotations. I add 5 seconds to all tracking results.
+  #tracking code already includes the start of the tracking, so I need to shift all annotations by that timestamp
+  #annotatedDF$Timestamp..ms. = annotatedDF$Timestamp..ms. + trackingDF$Timestamp..ms.[1]
+  annotationdata$time  = annotationdata$time + trackingdata$time[1]
+  ###############TIME SHIFT END
 
   attentions <- sapply(trackingdata$time,  getattention, annotationdata=annotationdata)
   attentionlevels <-levels(annotationdata$attentionlocation)
@@ -86,4 +102,48 @@ annotateTracking <- function(trackingdata, annotationdata){
   trackingdata$attention <- attentions
 
   return(trackingdata)
+}
+
+#' given a numberSequence, normalises the numbers according to the min and max of the sequence
+#'
+#' @param numberSequence The numbers to normalise to the range 0...1
+normalise0to1 <- function(numberSequence){
+  return((numberSequence - min(numberSequence))/(max(numberSequence)-min(numberSequence)))
+}
+
+
+#' Add tracking features
+#'
+#' Taken from Aitor's code
+#'
+#' @param combinedDF the tracking data with added annotation data
+#' @param participantCode the code of the participant
+#'
+#' @return The data frame with tracking features added
+#'
+#' @export
+createFeatureDF <- function(combinedDF, participantCode = NA){
+
+  featureDF <- data.frame(participantCode = participantCode,
+                          timestampms = combinedDF$time,
+                          timestampMMSS = paste(floor(combinedDF$time/60/1000),":",floor((combinedDF$time/1000)%%60),sep=""),
+                          attentionName = combinedDF$attention,
+                          attentionIpad = as.integer(combinedDF$attention == "ipad"),
+                          attentionTV = as.integer(combinedDF$attention == "tv"),
+                          attentionElsewhere= as.integer(combinedDF$attention == "elsewhere"),
+                          boxRotation = combinedDF$bbrot,
+                          boxHeight = combinedDF$bbh,
+                          boxWidth = combinedDF$bbw)
+
+  featureDF[,"boxArea"] <- featureDF$boxHeight * featureDF$boxWidth
+  featureDF[,"boxYcoord"] <- combinedDF$bbcy
+  #same as boxYcoord, but adjusted for the max and min
+  featureDF[,"boxYcoordRel"] <- normalise0to1(combinedDF$bbcy)
+
+  featureDF[,"widthHeightRatio"] <- featureDF$boxHeight / featureDF$boxWidth
+
+
+  ###Additional temporal features will be calculated here
+
+  return(featureDF)
 }
