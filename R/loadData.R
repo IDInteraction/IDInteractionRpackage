@@ -6,6 +6,7 @@
 #
 # Author: David Mawdsley
 
+# Functions to load and preprocess data
 
 #'  Load participant tracking data
 #'
@@ -147,3 +148,52 @@ createFeatureDF <- function(combinedDF, participantCode = NA){
 
   return(featureDF)
 }
+
+
+#' Generate a tracking feature dataframe for a participant
+#'
+#' @param participantCode The code number of the participant
+#' @param trackingLoc The file path containing the tracking data
+#' @param annoteLoc The file path containing the annotation data
+#'
+#' @return A data frame containing tracking and annotation data
+#'
+#' @export
+createTrackingAnnotation <- function(participantCode,
+                                     trackingLoc,
+                                     annoteLoc){
+
+  trackfn <- paste0(trackingLoc, participantCode, "_video.csv")
+  annotefn <- paste0(annoteLoc, participantCode, "-timings.csv")
+
+  tracking <- loadParticipantTrackingData(trackfn)
+  annotation <- loadParticipantAnnotationData(annotefn)
+
+  trackannotate <- annotateTracking(tracking, annotation)
+
+  featureDF <- createFeatureDF(trackannotate, participantCode = participantCode)
+
+  return(featureDF)
+}
+
+
+#' Flag whether each observation is for training or prediction
+#'
+#' Flag the start of the data with a training flag
+#'
+#' @param indata The input data set
+#' @param timevar The variable containing the timestamp in ms
+#' @param traingime The amount of time to use for training, in minutes
+#'
+#' @return a logical vector of length nrow(indata) indicating whether data are for
+#' training (TRUE), or prediction (FALSE)
+#'
+#' @export
+#'
+flagprediction <- function(indata, timevar = "timestampms", trainingtime){
+
+  istraining <- ifelse(indata[,timevar] <= trainigtime * 1000 * 60, TRUE, FALSE)
+
+  return(istraining)
+}
+
