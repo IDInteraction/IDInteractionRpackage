@@ -175,6 +175,23 @@ createTrackingAnnotation <- function(participantCode,
   return(featureDF)
 }
 
+#' Get a list of participants from a directory
+#'
+#' This function simply returns a list of all unique participant codes of the form P\\d+ in a
+#' directory.  It doesn't (currently) check we have the same file for each participant.
+#'
+#' @param indir The input directory
+#'
+#' @return A vector of participant codes
+#'
+#' @export
+getParticipantCodes <- function(indir){
+
+  filelist <- list.files(indir)
+  participantCodes <- unique(stringr::str_extract(filelist, "(P\\d+)"))
+
+  return(participantCodes)
+}
 
 #' Flag whether each observation is for training or prediction
 #'
