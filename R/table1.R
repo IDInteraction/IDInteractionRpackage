@@ -13,6 +13,7 @@ library(REEMtree)
 library(formula.tools)
 library(IDInteraction)
 library(party)
+library(sqldf)
 rm(list=ls())
 
 
@@ -38,4 +39,6 @@ for(p in participants){
   print(p)
 }
 
-sqldf::sqldf("select trainingtime, avg(accuracy) as avgaccuracy from allresults group by trainingtime")
+table1 <- sqldf("select trainingtime, avg(accuracy) as avgaccuracy 
+                       from allresults
+                       group by trainingtime")
