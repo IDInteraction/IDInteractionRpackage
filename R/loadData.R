@@ -160,10 +160,12 @@ createFeatureDF <- function(combinedDF, participantCode = NA){
 #' @export
 createTrackingAnnotation <- function(participantCode,
                                      trackingLoc,
-                                     annoteLoc){
+                                     annoteLoc,
+                                     trackingSuffix = "_video.csv",
+                                     timingSuffix = "-timings.csv"){
 
-  trackfn <- paste0(trackingLoc, participantCode, "_video.csv")
-  annotefn <- paste0(annoteLoc, participantCode, "-timings.csv")
+  trackfn <- paste0(trackingLoc, participantCode, trackingSuffix)
+  annotefn <- paste0(annoteLoc, participantCode, timingSuffix)
 
   tracking <- loadParticipantTrackingData(trackfn)
   annotation <- loadParticipantAnnotationData(annotefn)
