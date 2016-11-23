@@ -215,3 +215,34 @@ flagprediction <- function(indata, timevar = "timestampms", trainingtime){
   return(istraining)
 }
 
+
+
+#' Add a prefix to a set of variables
+#' 
+#' Add a prefix to all variables except those specified in a data-frame.
+#' This is used to separate out the various object tracking/detection variables
+#' @param indata The inputdata set
+#' @param prefix The prefix to add to the variables
+#' @param exclvars The variables not to prefix - will typically be participant codes, timestamps etc
+#' 
+#' @return The data-set with appropriate variables renamed
+#' 
+#' @export
+renameVariables <- function(indata, prefix, exclvars = c("participantCode",
+                                                         "timestampms",
+                                                         "timestampMMSS",
+                                                         "attentionName",
+                                                         "attentionIpad",
+                                                         "attentionTV",
+                                                         "attentionElsewhere")){
+  
+  invars <- names(indata)
+  
+  newnames <- ifelse(invars %in% exclvars, invars, paste0(prefix, invars))
+  
+  names(indata) <- newnames
+  
+  return(indata)
+  
+}
+#' 
