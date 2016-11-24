@@ -72,7 +72,13 @@ loadParticipantAnnotationData <- function(indata){
 #' @export
 getattention <- function(time, annotationdata){
 
-  attention <- tail(annotationdata[annotationdata$time <= time, "attentionlocation"], n=1)
+   earliertimes <- annotationdata$time <= time
+  # Return first attention in file, since annotation notes *changes* 
+  if(sum(earliertimes) == 0){ 
+    return(annotationdata[1,"attentionlocation"])
+  }
+   
+  attention <- tail(annotationdata[earliertimes, "attentionlocation"], n=1)
   return(as.numeric(attention))
 }
 
@@ -261,8 +267,8 @@ loadExperimentData <- function(p, trackingLoc, annoteLoc){
   allparticipants <- NULL
   for(p in participants){
     thisparticipant <- createTrackingAnnotation(p,
-                                                trackingLoc = "~/IDInteraction/tracking-analysis/Rnotebooks/resources/dual_screen_free_experiment/high_quality/front_full_face/",
-                                                annoteLoc = "~/IDInteraction/tracking-analysis/Rnotebooks/resources/dual_screen_free_experiment/high_quality/attention/"
+                                                trackingLoc = trackingLoc,
+                                                annoteLoc = annoteLoc
     )
     
   allparticipants <- rbind(allparticipants, thisparticipant)
