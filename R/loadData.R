@@ -200,17 +200,19 @@ getParticipantCodes <- function(indir){
 #' Flag the start of the data with a training flag
 #'
 #' @param indata The input data set
-#' @param timevar The variable containing the timestamp in ms
 #' @param traingime The amount of time to use for training, in minutes
+#' @param timevar The variable containing the timestamp in ms
 #'
 #' @return a logical vector of length nrow(indata) indicating whether data are for
 #' training (TRUE), or prediction (FALSE)
 #'
 #' @export
 #'
-flagprediction <- function(indata, timevar = "timestampms", trainingtime){
+flagtraining <- function(indata, trainingtime, timevar = "timestampms"){
 
-  istraining <- ifelse(indata[,timevar] <= trainigtime * 1000 * 60, TRUE, FALSE)
+  istraining <- ifelse(indata[,timevar] <= trainingtime * 1000 * 60, 
+                       TRUE, 
+                       FALSE)
 
   return(istraining)
 }
