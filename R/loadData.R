@@ -160,6 +160,8 @@ createFeatureDF <- function(combinedDF, participantCode = NA){
 #' @param participantCode The code number of the participant
 #' @param trackingLoc The file path containing the tracking data
 #' @param annoteLoc The file path containing the annotation data
+#' @param trackingSuffix The suffiex to apply to tracking data, e.g. P01_suffix.csv
+#' @param annoteSuffix The suffiex to apply to annotation data, e.g. P01_suffix.csv
 #'
 #' @return A data frame containing tracking and annotation data
 #'
@@ -168,10 +170,10 @@ createTrackingAnnotation <- function(participantCode,
                                      trackingLoc,
                                      annoteLoc,
                                      trackingSuffix = "_video.csv",
-                                     timingSuffix = "-timings.csv"){
+                                     annoteSuffix = "-timings.csv"){
 
   trackfn <- paste0(trackingLoc, participantCode, trackingSuffix)
-  annotefn <- paste0(annoteLoc, participantCode, timingSuffix)
+  annotefn <- paste0(annoteLoc, participantCode, annoteSuffix)
 
   tracking <- loadParticipantTrackingData(trackfn)
   annotation <- loadParticipantAnnotationData(annotefn)
@@ -263,12 +265,13 @@ renameVariables <- function(indata, prefix, exclvars = c("participantCode",
 #' @return A date set containing combined tracking and annotation data for each participant
 #' 
 #'@export
-loadExperimentData <- function(p, trackingLoc, annoteLoc){
+loadExperimentData <- function(p, trackingLoc, annoteLoc, ...){
   allparticipants <- NULL
   for(p in participants){
     thisparticipant <- createTrackingAnnotation(p,
                                                 trackingLoc = trackingLoc,
-                                                annoteLoc = annoteLoc
+                                                annoteLoc = annoteLoc,
+                                                ...
     )
     
   allparticipants <- rbind(allparticipants, thisparticipant)
