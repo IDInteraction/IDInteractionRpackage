@@ -142,8 +142,12 @@ createFeatureDF <- function(combinedDF, participantCode = NA){
                           boxWidth = combinedDF$bbw)
 
   featureDF[,"boxArea"] <- featureDF$boxHeight * featureDF$boxWidth
+  
+  featureDF[, "boxXcoord"] <- combinedDF$bbcx
   featureDF[,"boxYcoord"] <- combinedDF$bbcy
+  
   #same as boxYcoord, but adjusted for the max and min
+  featureDF[,"boxXcoordRel"] <- normalise0to1(combinedDF$bbcx)
   featureDF[,"boxYcoordRel"] <- normalise0to1(combinedDF$bbcy)
 
   featureDF[,"widthHeightRatio"] <- featureDF$boxHeight / featureDF$boxWidth
