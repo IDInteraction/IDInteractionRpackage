@@ -20,11 +20,16 @@
 #' @export
 getConfusionMatrix <- function(indata,
                                trainingtime,
-                               formula = attentionName ~ boxHeight + boxRotation + boxArea + boxWidth + widthHeightRatio + boxYcoordRel#boxYcoord
+                               formula
 ){
   
   # We need to recode the lhs factor so that it only has levels in it that are used.  The
   # levels then get replaced a the end of the function so we can compare between participants
+  
+  if(class(formula) != "formula"){
+    stop("formula must be of class formula")
+  }
+  
   lhsname <- formula.tools::lhs.vars(formula)
   lhslevels <- levels(indata[,lhsname])
   indata[, lhsname] <- factor(indata[,lhsname])
