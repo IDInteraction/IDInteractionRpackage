@@ -247,4 +247,27 @@ renameVariables <- function(indata, prefix, exclvars = c("participantCode",
   return(indata)
   
 }
+
+#' Load a set of participants' tracking and annotation data; concatenate
 #' 
+#' @param p The participant names
+#' @param trackingLoc The directory containing the tracking data
+#' @param annoteLoc The directory containing the annotation data
+#' 
+#' @return A date set containing combined tracking and annotation data for each participant
+#' 
+#'@export
+loadExperimentData <- function(p, trackingLoc, annoteLoc){
+  allparticipants <- NULL
+  for(p in participants){
+    thisparticipant <- createTrackingAnnotation(p,
+                                                trackingLoc = "~/IDInteraction/tracking-analysis/Rnotebooks/resources/dual_screen_free_experiment/high_quality/front_full_face/",
+                                                annoteLoc = "~/IDInteraction/tracking-analysis/Rnotebooks/resources/dual_screen_free_experiment/high_quality/attention/"
+    )
+    
+  allparticipants <- rbind(allparticipants, thisparticipant)
+  
+  }
+  
+  return(allparticipants)
+} 
