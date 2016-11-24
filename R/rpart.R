@@ -30,7 +30,7 @@ getConfusionMatrix <- function(indata,
   indata[, lhsname] <- factor(indata[,lhsname])
   
   
-  indata$training <- ifelse(indata$timestampms <= trainingtime * 60 * 1000, TRUE, FALSE)
+  indata$training <- flagtraining(indata, trainingtime)
   
   treeclass <- rpart(formula,
                      method="class", data=indata[indata$training==TRUE, ])
