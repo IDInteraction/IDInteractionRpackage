@@ -325,3 +325,82 @@ getVideoInfo <- function(videoIn){
   return(vidlist)
 }
 
+#' Get the length of a video in ms
+#' 
+#' @param participantCode the participantCode e.g. "P01"
+#' @param vidloc the folder containing the videos
+#' @param videoSuffix the suffix to appent to the participantCode
+#' 
+#' @return The length of the video in ms
+#' @export
+getVideoLength <- function(participantCode, vidLoc,
+                           videoSuffix = "_video.mp4"){
+  videofile <- paste0(vidLoc, participantCode, videoSuffix)
+  
+  videolength <- 1000 * getVideoInfo(videofile)$ID_LENGTH
+  
+  return(videolength)
+}
+
+#' Get the number of fps in a video
+#' 
+#' @param participantCode the participantCode e.g. "P01"
+#' @param vidloc the folder containing the videos
+#' @param videoSuffix the suffix to appent to the participantCode
+#' 
+#' @return The number of fps in a video
+#' @export
+getVideoFPS <- function(participantCode, vidLoc,
+                           videoSuffix = "_video.mp4"){
+  videofile <- paste0(vidLoc, participantCode, videoSuffix)
+  
+  videofps <- getVideoInfo(videofile)$ID_VIDEO_FPS
+  
+  return(videofps)
+}
+
+
+#' Get the number of frames in a video
+#' 
+#' @param participantCode the participantCode e.g. "P01"
+#' @param vidloc the folder containing the videos
+#' @param videoSuffix the suffix to appent to the participantCode
+#' 
+#' @return The length of the video in ms
+#' @export
+getVideoFrames <- function(participantCode, vidLoc,
+                           videoSuffix = "_video.mp4"){
+  videofile <- paste0(vidLoc, participantCode, videoSuffix)
+  
+  videoinfo <- getVideoInfo(videofile)
+  
+  videoframes <- videoinfo$ID_LENGTH * videoinfo$ID_VIDEO_FPS
+  
+  return(videoframes)
+}
+
+
+
+
+#' Get the timeskip at the start of a video
+#' 
+#' @param participantCode the participant code
+#' @param skipLoc the location of the skip files
+#' 
+#' @return The time in ms before the experiment started
+#' @export
+getSkipTime <- function(participantCode, 
+                          skipLoc){
+  
+  skipfile <- paste0(skipLoc, participantCode, "_video.skip" )
+  
+  skipval <- scan(skipfile, quiet = TRUE)
+  
+  if(length(skipval) != 1 || !is.numeric(skipval)){
+    stop("Error reading skip file")
+  }
+  
+  return(skipval)
+}
+  
+  
