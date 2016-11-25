@@ -37,9 +37,9 @@ loadParticipantTrackingData <- function(indata){
                                             "bbv3y",
                                             "bbv4x",
                                             "bbv4y"))
-
+  
   return(participantData)
-
+  
 }
 
 
@@ -57,9 +57,9 @@ loadParticipantAnnotationData <- function(indata){
                                          "totv",
                                          "toelsewhere",
                                          "attentionlocation"))
-
+  
   return(annotationdata)
-
+  
 }
 
 
@@ -71,13 +71,13 @@ loadParticipantAnnotationData <- function(indata){
 #' @importFrom dplyr "%>%"
 #' @export
 getattention <- function(time, annotationdata){
-
-   earliertimes <- annotationdata$time <= time
+  
+  earliertimes <- annotationdata$time <= time
   # Return first attention in file, since annotation notes *changes* 
   if(sum(earliertimes) == 0){ 
     return(annotationdata[1,"attentionlocation"])
   }
-   
+  
   attention <- tail(annotationdata[earliertimes, "attentionlocation"], n=1)
   return(as.numeric(attention))
 }
@@ -91,7 +91,7 @@ getattention <- function(time, annotationdata){
 #'
 #' @export
 annotateTracking <- function(trackingdata, annotationdata){
-
+  
   # From Aitor's code:
   ##############TIME SHIFT FIX
   #It was found that there was a mismatch between the tracking and the annotations. I add 5 seconds to all tracking results.
@@ -99,14 +99,14 @@ annotateTracking <- function(trackingdata, annotationdata){
   #annotatedDF$Timestamp..ms. = annotatedDF$Timestamp..ms. + trackingDF$Timestamp..ms.[1]
   annotationdata$time  = annotationdata$time + trackingdata$time[1]
   ###############TIME SHIFT END
-
+  
   attentions <- sapply(trackingdata$time,  getattention, annotationdata=annotationdata)
   attentionlevels <-levels(annotationdata$attentionlocation)
-
+  
   attentions <- factor(attentionlevels[attentions], levels = attentionlevels)
-
+  
   trackingdata$attention <- attentions
-
+  
   return(trackingdata)
 }
 
@@ -129,7 +129,7 @@ normalise0to1 <- function(numberSequence){
 #'
 #' @export
 createFeatureDF <- function(combinedDF, participantCode = NA){
-
+  
   featureDF <- data.frame(participantCode = participantCode,
                           timestampms = combinedDF$time,
                           timestampMMSS = paste(floor(combinedDF$time/60/1000),":",floor((combinedDF$time/1000)%%60),sep=""),
@@ -140,7 +140,7 @@ createFeatureDF <- function(combinedDF, participantCode = NA){
                           boxRotation = combinedDF$bbrot,
                           boxHeight = combinedDF$bbh,
                           boxWidth = combinedDF$bbw)
-
+  
   featureDF[,"boxArea"] <- featureDF$boxHeight * featureDF$boxWidth
   
   featureDF[, "boxXcoord"] <- combinedDF$bbcx
@@ -149,12 +149,12 @@ createFeatureDF <- function(combinedDF, participantCode = NA){
   #same as boxYcoord, but adjusted for the max and min
   featureDF[,"boxXcoordRel"] <- normalise0to1(combinedDF$bbcx)
   featureDF[,"boxYcoordRel"] <- normalise0to1(combinedDF$bbcy)
-
+  
   featureDF[,"widthHeightRatio"] <- featureDF$boxHeight / featureDF$boxWidth
-
-
+  
+  
   ###Additional temporal features will be calculated here
-
+  
   return(featureDF)
 }
 
@@ -175,17 +175,17 @@ createTrackingAnnotation <- function(participantCode,
                                      annoteLoc,
                                      trackingSuffix = "_video.csv",
                                      annoteSuffix = "-timings.csv"){
-
+  
   trackfn <- paste0(trackingLoc, participantCode, trackingSuffix)
   annotefn <- paste0(annoteLoc, participantCode, annoteSuffix)
-
+  
   tracking <- loadParticipantTrackingData(trackfn)
   annotation <- loadParticipantAnnotationData(annotefn)
-
+  
   trackannotate <- annotateTracking(tracking, annotation)
-
+  
   featureDF <- createFeatureDF(trackannotate, participantCode = participantCode)
-
+  
   return(featureDF)
 }
 
@@ -200,10 +200,10 @@ createTrackingAnnotation <- function(participantCode,
 #'
 #' @export
 getParticipantCodes <- function(indir){
-
+  
   filelist <- list.files(indir)
   participantCodes <- unique(stringr::str_extract(filelist, "(P\\d+)"))
-
+  
   return(participantCodes)
 }
 
@@ -221,11 +221,11 @@ getParticipantCodes <- function(indir){
 #' @export
 #'
 flagtraining <- function(indata, trainingtime, timevar = "timestampms"){
-
+  
   istraining <- ifelse(indata[,timevar] <= trainingtime * 1000 * 60, 
                        TRUE, 
                        FALSE)
-
+  
   return(istraining)
 }
 
@@ -278,9 +278,50 @@ loadExperimentData <- function(p, trackingLoc, annoteLoc, ...){
                                                 ...
     )
     
-  allparticipants <- rbind(allparticipants, thisparticipant)
-  
+    allparticipants <- rbind(allparticipants, thisparticipant)
+    
   }
   
   return(allparticipants)
 } 
+
+
+#' Get information about a video file
+#' 
+#' This function calls the Bash script midentify.sh, which is included as part of the package.
+#' It requires mencoder is available in the path
+#' 
+#' @param videoIn the input video file
+#' 
+#' @return Information about the video file as a list
+#' @export
+getVideoInfo <- function(videoIn){
+  scriptfile <- system.file("bin", "midentify.sh", package="IDInteraction")
+  
+  if(nchar(scriptfile) < 12){
+    stop("Script not found")
+  }
+  
+  vidinfo <- system2(scriptfile, args = videoIn, stdout = TRUE) 
+  
+  vidsplit <- strsplit(vidinfo, "=")
+  
+  vidlist <- list()
+  
+  # Convert what we can to numeric
+  convertValue <- function(x){
+    #http://stackoverflow.com/questions/24129124/how-to-determine-if-a-character-vector-is-a-valid-numeric-or-integer-vector
+    if (suppressWarnings(all(!is.na(as.numeric(as.character(x)))))) {
+      as.numeric(as.character(x))
+    } else {
+      x
+    }
+  }
+  
+  for(c in vidsplit){
+    vidlist[c[1]] <- convertValue(c[2])
+  }
+  
+  return(vidlist)
+}
+
