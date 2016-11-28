@@ -131,6 +131,7 @@ normalise0to1 <- function(numberSequence){
 createFeatureDF <- function(combinedDF, participantCode = NA){
   
   featureDF <- data.frame(participantCode = participantCode,
+                          frame = combinedDF$frame,
                           timestampms = combinedDF$time,
                           timestampMMSS = paste(floor(combinedDF$time/60/1000),":",floor((combinedDF$time/1000)%%60),sep=""),
                           attentionName = combinedDF$attention,
