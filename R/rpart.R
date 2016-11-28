@@ -8,23 +8,21 @@
 
 # Functions to fit recursive partitioning trees and analyse the results
 
-#' Return the confusion matrix for an rpart tree trained with trainingtime minutes of training data
-#' using the model given in formula
+#' Get a prediction for each observation using recusrsive partitioning, given
+#' trainingtime minutes of training time.
 #' 
 #' @param indata The input data set
 #' @param trainingtime The training time in minutes
 #' @param formula The model formula
 #' 
-#' @return The confusion matrix
+#' @return A data frame containing the observed attention, the predicted attention and the 
+#' probabilities for the predicted attention
 #' 
 #' @export
-getConfusionMatrix <- function(indata,
-                               trainingtime,
-                               formula
-){
+getPartitionPredictions <- function(indata, trainingtime, formula){
   
-  # We need to recode the lhs factor so that it only has levels in it that are used.  The
-  # levels then get replaced a the end of the function so we can compare between participants
+  # We recode the lhs factor so that it only has levels in it that are used.  The
+  # levels then get replaced at the end of the function so we can compare between participants
   
   if(class(formula) != "formula"){
     stop("formula must be of class formula")
@@ -47,19 +45,53 @@ getConfusionMatrix <- function(indata,
                            type = "prob")
   
   dfpredclass <- data.frame(observedAttentionName = indata[indata$training == FALSE,
-                                                              lhsname],
+                                                           lhsname],
                             predclass, predclassprob)
   
   # Use all factor levels from input data-set
   dfpredclass$predclass <- factor(dfpredclass$predclass, levels = lhslevels)
   dfpredclass$observedAttentionName <- factor(dfpredclass$observedAttentionName, levels = lhslevels)
   
+  class(dfpredclass) <- c("pred", class(dfpredclass))
+  
+  return(dfpredclass)
+  
+}
+
+#' Return the confusion matrix for an rpart tree trained with trainingtime minutes of training data
+#' using the model given in formula
+#' 
+#' @param indata The input data set
+#' @param trainingtime The training time in minutes
+#' @param formula The model formula
+#' 
+#' @return The confusion matrix
+#' 
+#' @export
+getConfusionMatrix <- function(indata,
+                               trainingtime,
+                               formula
+){
+  
+ dfpredclass <- getPartitionPredictions(indata, trainingtime, formula)
+  
   confmat <-table(dfpredclass$observedAttentionName, dfpredclass$predclass)
   
   return(confmat)
 }
 
-
+#' Get the confusion matrix for a set of predictions
+#' 
+#' @param inpred a data frame of class pred containing the observed and predicted behaviours
+#' 
+#' @return The confusion matrix
+#' @export
+getConfusionMatrixPreds <- function(inpred){
+  
+  confmat <-table(inpred$observedAttentionName, inpred$predclass)
+  return(confmat)
+  
+}
 
 #' Get the accuracy from the confusion matrix
 #' 
