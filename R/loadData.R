@@ -352,7 +352,7 @@ getVideoLength <- function(participantCode, vidLoc,
 #' @return The number of fps in a video
 #' @export
 getVideoFPS <- function(participantCode, vidLoc,
-                           videoSuffix = "_video.mp4"){
+                        videoSuffix = "_video.mp4"){
   videofile <- paste0(vidLoc, participantCode, videoSuffix)
   
   videofps <- getVideoInfo(videofile)$ID_VIDEO_FPS
@@ -391,7 +391,7 @@ getVideoFrames <- function(participantCode, vidLoc,
 #' @return The time in ms before the experiment started
 #' @export
 getSkipTime <- function(participantCode, 
-                          skipLoc){
+                        skipLoc){
   
   skipfile <- paste0(skipLoc, participantCode, "_video.skip" )
   
@@ -403,5 +403,38 @@ getSkipTime <- function(participantCode,
   
   return(skipval)
 }
+
+
+
+#' Join model predictions to a tracking data-set, by frame
+#' 
+#' @param trackfile The participant tracking data file
+#' @param predfile The predictions from a model
+#' 
+#' @return A data frame containing the participant data and model predictions
+#' @export
+addPredictionsToTracking <- function(trackfile, predfile){
   
   
+  tracking <- loadParticipantTrackingData(trackfile)
+  predictions <- read.csv(predfile)
+  
+  trackpreds <- sqldf::sqldf("select t.*, numpredclass from tracking as t
+        left join predictions as p on t.frame=p.frame")
+  
+  if(nrow(tracking) != nrow(trackpreds)){
+    warning("Number of rows post join does not agree")
+    warning(paste(nrow(tracking), "rows in tracking set, ",
+                  nrow(trackpreds), "rows in prediction set"))
+  }
+  
+  # Make no prediction class 1 and re-index the other predictions
+  trackpreds$numpredclass <- (ifelse(is.na(trackpreds$numpredclass), 1, trackpreds$numpredclass+1))
+  
+  return(trackpreds)
+  
+}
+
+
+
+
