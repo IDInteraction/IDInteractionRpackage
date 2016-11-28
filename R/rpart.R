@@ -8,6 +8,23 @@
 
 # Functions to fit recursive partitioning trees and analyse the results
 
+#' Get the lhs of a formula
+#' 
+#' formula.tools version was failing in odd ways - something to do with lazy evaluation
+#' @param informula
+#' 
+#' @return The LHS of the formula as a string
+getFormulaLHS <- function(informula){
+  if(class(informula) != "formula"){
+    stop("Must be a formula")
+  }
+  
+  return(as.character(informula[[2]]))
+  
+}
+  
+
+
 #' Get a prediction for each observation using recusrsive partitioning, given
 #' trainingtime minutes of training time.
 #' 
@@ -19,23 +36,23 @@
 #' probabilities for the predicted attention
 #' 
 #' @export
-getPartitionPredictions <- function(indata, trainingtime, formula){
+getPartitionPredictions <- function(indata, trainingtime, predformula){
   
   # We recode the lhs factor so that it only has levels in it that are used.  The
   # levels then get replaced at the end of the function so we can compare between participants
   
-  if(class(formula) != "formula"){
+  if(class(predformula) != "formula"){
     stop("formula must be of class formula")
   }
   
-  lhsname <- formula.tools::lhs.vars(formula)
+  lhsname <- getFormulaLHS(predformula)
   lhslevels <- levels(indata[,lhsname])
   indata[, lhsname] <- factor(indata[,lhsname])
   
   
   indata$training <- flagtraining(indata, trainingtime)
   
-  treeclass <- rpart(formula,
+  treeclass <- rpart::rpart(predformula,
                      method="class", data=indata[indata$training==TRUE, ])
   
   predclass <- predict(treeclass, newdata = indata[indata$training == FALSE, ],
