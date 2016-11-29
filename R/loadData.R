@@ -263,14 +263,14 @@ renameVariables <- function(indata, prefix, exclvars = c("participantCode",
 
 #' Load a set of participants' tracking and annotation data; concatenate
 #' 
-#' @param p The participant names
+#' @param participants The participant names
 #' @param trackingLoc The directory containing the tracking data
 #' @param annoteLoc The directory containing the annotation data
 #' 
 #' @return A date set containing combined tracking and annotation data for each participant
 #' 
 #'@export
-loadExperimentData <- function(p, trackingLoc, annoteLoc, ...){
+loadExperimentData <- function(participants, trackingLoc, annoteLoc, ...){
   allparticipants <- NULL
   for(p in participants){
     thisparticipant <- createTrackingAnnotation(p,
