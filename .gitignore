@@ -2,4 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
-IDInteraction.Rproj
+IDInteractionRpackage.Rproj
+NAMESPACE
+man/
