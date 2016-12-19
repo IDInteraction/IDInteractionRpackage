@@ -204,7 +204,7 @@ getParticipantCodes <- function(indir){
   
   filelist <- list.files(indir)
   participantCodes <- unique(stringr::str_extract(filelist, "(P\\d+)"))
-  if(is.na(participantCodes)){
+  if(length(participantCodes) == 1 && all(is.na(participantCodes))){
     stop("No participants found")
   }
   return(participantCodes)
