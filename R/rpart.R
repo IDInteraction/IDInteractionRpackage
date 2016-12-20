@@ -36,7 +36,7 @@ getFormulaLHS <- function(informula){
 #' probabilities for the predicted attention
 #' 
 #' @export
-getPartitionPredictions <- function(indata, trainingtime, predformula){
+getPartitionPredictions <- function(indata, trainingtime, predformula, ...){
   
   # We recode the lhs factor so that it only has levels in it that are used.  The
   # levels then get replaced at the end of the function so we can compare between participants
@@ -50,7 +50,7 @@ getPartitionPredictions <- function(indata, trainingtime, predformula){
   indata[, lhsname] <- factor(indata[,lhsname])
   
   
-  indata$training <- flagtraining(indata, trainingtime)
+  indata$training <- flagtraining(indata, trainingtime, ...)
   
   treeclass <- rpart::rpart(predformula,
                      method="class", data=indata[indata$training==TRUE, ])
@@ -87,10 +87,10 @@ getPartitionPredictions <- function(indata, trainingtime, predformula){
 #' @export
 getConfusionMatrix <- function(indata,
                                trainingtime,
-                               formula
+                               formula, ...
 ){
   
- dfpredclass <- getPartitionPredictions(indata, trainingtime, formula)
+ dfpredclass <- getPartitionPredictions(indata, trainingtime, formula, ...)
   
   confmat <-table(dfpredclass$observedAttentionName, dfpredclass$predclass)
   

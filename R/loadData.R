@@ -212,22 +212,32 @@ getParticipantCodes <- function(indir){
 
 #' Flag whether each observation is for training or prediction
 #'
-#' Flag the start of the data with a training flag
+#' Flag the start of the data with a training flag.  By default this function will flag the 
+#' first trainingtime minutes of video, even if we don't start from t=0.  To restore the old (probably not what you want)
+#' behaviour use the assume0 flag.
 #'
 #' @param indata The input data set
-#' @param traingime The amount of time to use for training, in minutes
+#' @param traingtime The amount of time to use for training, in minutes
 #' @param timevar The variable containing the timestamp in ms
+#' @param assume0 Whether to calculate the training time with respect to t=0 (old behaviour) or from the start of the video
 #'
 #' @return a logical vector of length nrow(indata) indicating whether data are for
 #' training (TRUE), or prediction (FALSE)
 #'
 #' @export
 #'
-flagtraining <- function(indata, trainingtime, timevar = "timestampms"){
+flagtraining <- function(indata, trainingtime, timevar = "timestampms", assume0 = FALSE){
   
+  if(assume0){
   istraining <- ifelse(indata[,timevar] <= trainingtime * 1000 * 60, 
                        TRUE, 
                        FALSE)
+  }else{
+    istraining <- ifelse(indata[,timevar]-indata[1,timevar] <= trainingtime * 1000 * 60, 
+                         TRUE, 
+                         FALSE)
+    
+  }
   
   return(istraining)
 }
