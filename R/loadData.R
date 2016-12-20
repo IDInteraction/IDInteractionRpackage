@@ -140,7 +140,8 @@ createFeatureDF <- function(combinedDF, participantCode = NA){
                           attentionElsewhere= as.integer(combinedDF$attention == "elsewhere"),
                           boxRotation = combinedDF$bbrot,
                           boxHeight = combinedDF$bbh,
-                          boxWidth = combinedDF$bbw)
+                          boxWidth = combinedDF$bbw,
+                          actpt = combinedDF$actpt)
   
   featureDF[,"boxArea"] <- featureDF$boxHeight * featureDF$boxWidth
   
