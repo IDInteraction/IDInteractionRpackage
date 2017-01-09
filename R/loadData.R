@@ -117,6 +117,36 @@ normalise0to1 <- function(numberSequence){
   return((numberSequence - min(numberSequence))/(max(numberSequence)-min(numberSequence)))
 }
 
+#' Calculate velocity and acceleration of the bounding box centre
+#' @param indata The input data set
+#' @param fps The framerate of the video
+#' 
+#' @return A data table containing the x and y components of the bbox velocity
+#' in pixels/second and acceleration in pixels/second^2
+#' 
+#' Note that there may be floating point precision issues in the values returned
+#' TODO - deal with these
+#' 
+getVeclocityAndAcceleration <- function(indata, fps=50){
+  
+  deltat = 1/fps
+  
+  indata <- indata %>% dplyr::mutate(lagx = lag(bbcx))
+  indata <- indata %>% dplyr::mutate(lagy = lag(bbcy))
+  
+  
+  indata <- indata %>% dplyr::mutate(vx = (bbcx - lag(bbcx))/deltat)
+  indata <- indata %>% dplyr::mutate(vy = (bbcy - lag(bbcy))/deltat)
+  
+  
+  
+  indata <- indata %>% dplyr::mutate(ax = (vx - lag(vx))/deltat)
+  indata <- indata %>% dplyr::mutate(ay = (vy - lag(vy))/deltat)
+  
+  indata$lagx <- NULL
+  indata$lagy <- NULL
+  return(indata)
+}
 
 #' Add tracking features
 #'
@@ -154,7 +184,7 @@ createFeatureDF <- function(combinedDF, participantCode = NA){
   
   featureDF[,"widthHeightRatio"] <- featureDF$boxHeight / featureDF$boxWidth
   
-  
+  featureDF <- cbind(featureDF, getVeclocityAndAcceleration(combinedDF))
   ###Additional temporal features will be calculated here
   
   return(featureDF)
