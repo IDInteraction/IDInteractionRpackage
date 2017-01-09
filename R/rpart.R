@@ -22,7 +22,7 @@ getFormulaLHS <- function(informula){
   return(as.character(informula[[2]]))
   
 }
-  
+
 
 
 #' Get a prediction for each observation using recusrsive partitioning, given
@@ -53,7 +53,7 @@ getPartitionPredictions <- function(indata, trainingtime, predformula, ...){
   indata$training <- flagtraining(indata, trainingtime, ...)
   
   treeclass <- rpart::rpart(predformula,
-                     method="class", data=indata[indata$training==TRUE, ])
+                            method="class", data=indata[indata$training==TRUE, ])
   
   predclass <- predict(treeclass, newdata = indata[indata$training == FALSE, ],
                        type = "class")
@@ -90,7 +90,7 @@ getConfusionMatrix <- function(indata,
                                formula, ...
 ){
   
- dfpredclass <- getPartitionPredictions(indata, trainingtime, formula, ...)
+  dfpredclass <- getPartitionPredictions(indata, trainingtime, formula, ...)
   
   confmat <-table(dfpredclass$observedAttentionName, dfpredclass$predclass)
   
@@ -100,12 +100,34 @@ getConfusionMatrix <- function(indata,
 #' Get the confusion matrix for a set of predictions
 #' 
 #' @param inpred a data frame of class pred containing the observed and predicted behaviours
-#' 
+#' @param observed string containing column name containing the observed attentions (i.e. ground truth)
+#' @param predicted string containing column name containing the predicted attentions
 #' @return The confusion matrix
 #' @export
-getConfusionMatrixPreds <- function(inpred){
+getConfusionMatrixPreds <- function(inpred,
+                                    observed = "observedAttentionName",
+                                    predicted = "predclass"){
   
-  confmat <-table(inpred$observedAttentionName, inpred$predclass)
+  colnames <- names(inpred)
+  if(!(observed %in% colnames)){
+    stop(paste(observed, "not found as observed data"))
+  }
+  if(!(predicted %in% colnames)){
+    stop(paste(predicted, "not foundas predicted data"))
+  }
+  
+  obsdata <- inpred[,observed]
+  preddata <- inpred[,predicted]
+  
+  if(xor(is.factor(obsdata), is.factor(preddata))){
+    warning("Only one of observed and predicted is a factor")
+  }
+  
+  if(is.factor(obsdata) && is.factor(preddata) && (levels(obsdata) != levels(preddata))){
+    stop("Factor levels don't match")
+  }
+  
+  confmat <-table(obsdata, preddata)
   return(confmat)
   
 }
@@ -122,8 +144,8 @@ getConfusionMatrixPreds <- function(inpred){
 getAccuracy <- function(inmat){
   
   matdim <- dim(inmat)
-
-    if(length(matdim) != 2){
+  
+  if(length(matdim) != 2){
     stop("Expecting a 2d matrix")
   }
   
@@ -131,8 +153,37 @@ getAccuracy <- function(inmat){
     stop("Matrix must be square")
   }
   
-    correct <- sum(diag(inmat))
-    total <- sum(inmat)
+  correct <- sum(diag(inmat))
+  total <- sum(inmat)
   
-    return(correct/total)
+  return(correct/total)
 }
+
+#' Calculate Matthews' correlation coefficient given a confusion matrix
+#' 
+#' Calculate Matthews' correlation coefficeint - a measure of classification quality
+#' https://en.wikipedia.org/wiki/Matthews_correlation_coefficient
+#' 
+#' @param inmat The confusion matrix
+#' @return Matthews' correlation coefficient
+#' 
+#' @export
+#' 
+matthewsCC <- function(inmat){
+  
+  TP <- as.double(inmat[1,1])
+  TN <- as.double(inmat[2,2])
+  FP <- as.double(inmat[1,2])
+  FN <- as.double(inmat[2,1])
+  
+  mcc <- (TP*TN - FP*FN)/sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  
+  
+  if(mcc < -1 | mcc > 1){
+    stop(paste("error in calculation", mcc))
+  }
+  
+  return(mcc)
+  
+}
+
