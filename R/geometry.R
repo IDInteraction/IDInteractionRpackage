@@ -29,3 +29,72 @@ calcArea <- function(vertices){
   return(area)
   
 }
+
+
+
+#' Calculate the area for a set of points stored horizontally
+#' 
+#' This function is typically used with apply, e.g. 
+#' apply(vertexfile, 1, extractverticies, 31:36) to calculate the area of the right eye
+#' 
+#' @param inrow A row of input data
+#' @param vertices The vertices to extract
+#' 
+#' @return The area enclosed by the selected vertices
+#' 
+#' @export
+calcAreaRowWise <- function(inrow, vertices){
+  x <- inrow[paste0("p", vertices, "x")]
+  y <- inrow[paste0("p", vertices, "y")]
+  
+  calcArea(cbind(x,y))
+}
+
+
+#' Calculate the distance between two vertices
+#' 
+#' @param inrow A row of input data
+#' @param vertices The pair of vertices to calculate the distance between
+#' 
+#' @return The distance between the vertices
+#' 
+#' @export
+calcDistanceRowWise <- function(inrow, vertices){
+  if(length(vertices) !=2){
+    stop("Can only calculate the distance betweeen 2 vertices")
+  }
+  x <- as.vector(inrow[paste0("p", vertices, "x")])
+  y <- as.vector(inrow[paste0("p", vertices, "y")])
+  
+  distance <- sqrt((x[1]-x[2])**2 + (y[1]-y[2])**2)
+  
+  return(distance)
+}
+
+
+#' Calculate the angle (from horizontal) between two vertices
+#' 
+#' @param inrow A row of input data
+#' @param vertices The pair of vertices to calculate the angle from horizontal
+#' 
+#' @return The angle from horizontal in radians
+#' 
+#' @export
+calcAngleRowWise <- function(inrow, vertices){
+  if(length(vertices) !=2){
+    stop("Can only calculate the distance betweeen 2 vertices")
+  }
+  
+  x <- inrow[paste0("p", vertices, "x")]
+  y <- inrow[paste0("p", vertices, "y")]
+  
+  deltax <- as.numeric(x[2] - x[1])
+  deltay <- as.numeric(y[2] - y[1])
+  
+  if(deltax == 0 && deltay == 0){
+    return(NA)
+  }else{
+    return(atan2(deltay, deltax))
+  }
+  
+}
