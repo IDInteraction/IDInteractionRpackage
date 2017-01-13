@@ -1,8 +1,8 @@
-# Functions related to loading and processing landmark data
+# Functions related to loading and processing indata data
 
-#' Read a data-set containing landmark data
+#' Read a data-set containing indata data
 #' 
-#' Read a data-set containing landmark data.  This consists of one row per frame
+#' Read a data-set containing indata data.  This consists of one row per frame
 #' containing the fields "frame", /v.x/, /v.y/
 #' 
 #' If vectors are numbered from 1 they are automatically renumbered to be zero indexed
@@ -11,10 +11,10 @@
 #' @param infile The input file name
 #' @param renumber Whether to renumber nodes so zero indexed (default = TRUE)
 #' 
-#' @return A dataframe containing the landmark data
+#' @return A dataframe containing the indata data
 #' 
 #' @export
-readLandMark <- function(infile, renumber = TRUE){
+readLandmark <- function(infile, renumber = TRUE){
   
   indata <- read.csv(infile)
   innames <- names(indata)
@@ -54,3 +54,31 @@ readLandMark <- function(infile, renumber = TRUE){
   return(indata)
   
 }
+
+
+#' Add features to the indata data set
+#' 
+#' Features are things like the area of each eye, face orientation etc
+#' 
+#' @param indata The input indata data-set
+#' 
+#' @return A dataframe containing each calculated feature
+#' 
+#' @export
+calcLandmarkFeatures <- function(indata){
+  
+  righteye <- apply(indata, 1, calcAreaRowWise, vertices = 36:41)
+  lefteye <-  apply(indata, 1, calcAreaRowWise, vertices = 42:47)
+  nosedist <- apply(indata,1, calcDistanceRowWise, vertices=c(30,33))
+  facerotation <- apply(indata,1, calcAngleRowWise, vertices = c(0,16))
+  mouthrotation <- apply(indata,1, calcAngleRowWise, vertices = c(48,54))
+  
+  return(data.frame(frame=indata$frame,
+                    righteye,
+                    lefteye,
+                    nosedist,
+                    facerotation,
+                    mouthrotation))
+  
+}
+
