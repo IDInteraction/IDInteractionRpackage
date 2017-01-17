@@ -131,6 +131,10 @@ getVeclocityAndAcceleration <- function(indata, fps=50){
   
   deltat = 1/fps
   
+  # Get the names we start off with.  These get dropped at the end so we
+  # *only* return fields we've computed
+  innames <- names(indata)
+  
   indata <- indata %>% dplyr::mutate(lagx = lag(bbcx))
   indata <- indata %>% dplyr::mutate(lagy = lag(bbcy))
   
@@ -145,7 +149,13 @@ getVeclocityAndAcceleration <- function(indata, fps=50){
   
   indata$lagx <- NULL
   indata$lagy <- NULL
-  return(indata)
+  
+  outnames <- names(indata)
+  newnames <- setdiff(outnames, innames)
+  
+  outdata <- indata[,newnames]
+  
+  return(outdata)
 }
 
 #' Add tracking features
