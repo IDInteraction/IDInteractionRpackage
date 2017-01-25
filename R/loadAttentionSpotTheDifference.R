@@ -64,6 +64,13 @@ loadSpotTheDifference <- function(inloc){
   attentions$annotation <- recodevalues(attentions$annotation, "start _tablet",
                                         "start_tablet")
   
+  # Aitor started coding participant 1 with these longhand names; they should be coded as follows
+  # (confirmed with him 25 Jan)
+  attentions$annotation <- recodevalues(attentions$annotation, "TV_to_tablet",
+                                        "tablet")
+  
+  attentions$annotation <- recodevalues(attentions$annotation, "tablet_to_TV",
+                                        "TV")
   
   # Calculate the midpoint of each transition period 
   attentions$attTransMidss <- attentions$attTransStartss + (attentions$attTransEndss - attentions$attTransStartss)/2
