@@ -491,3 +491,54 @@ addPredictionsToTracking <- function(trackfile, predfile){
 
 
 
+
+#' Recode the values in a vector of data.  Warn if > warngtr values are changed
+#' 
+#' Function to recode data/correct typos in coding.
+#' 
+#' @param indata The input data vector
+#' @param changecol The value to change from
+#' @param to The value to change to
+#' @param printgtr Print if more than this many values change
+#' @param warngtr Warn if more than this many values change 
+#' 
+#' @return A vector containing the data with changes applied
+#' @export
+recodevalues <- function(indata,  from, to, printgtr = 0, warngtr = 2){
+  
+  if(printgtr > warngtr){
+    warngtr <- printgtr
+  }
+  
+  outdata <- ifelse(indata == from, to, indata)
+  
+  changes <- sum(indata != outdata, na.rm = TRUE)
+  
+  changestring <- paste(changes ,"changes made to data")
+  
+  if(changes > printgtr){
+    print(changestring)
+  }else if(changes > warngtr){
+    warning(changestring)
+  }
+  
+  return(outdata)
+  
+}
+
+#' Offset time
+#' 
+#' Return a vector containing times in seconds, offset by the specified amount
+#' 
+#' @param intimes A vector of times, in seconds
+#' @param offsettime The time to offset by, in seconds
+#' 
+#' @return A vector of times, in seconds, with the offset applied
+#' 
+#' @export
+offsetTime <- function(intimes, offsettime = 0){
+  
+  return(intimes - offsettime)
+  
+  
+}
