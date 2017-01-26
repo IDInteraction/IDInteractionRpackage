@@ -72,6 +72,9 @@ loadSpotTheDifference <- function(inloc){
   attentions$annotation <- recodevalues(attentions$annotation, "tablet_to_TV",
                                         "TV")
   
+  # Eventtype isn't consistently coded annotation/annotations:
+  attentions$eventtype <- recodevalues(attentions$eventtype, "annotations", "annotation")
+  
   # Calculate the midpoint of each transition period 
   attentions$attTransMidss <- attentions$attTransStartss + (attentions$attTransEndss - attentions$attTransStartss)/2
   
