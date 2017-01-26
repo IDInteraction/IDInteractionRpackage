@@ -4,10 +4,13 @@
 #' Load the ground truth data from the spot the differnece experiment.   Correct coding errors on load
 #' 
 #' @param inloc The folder containing the ground truth data
+#' @param keyfile An optional CSV file specifying how to recode annotations
+#'
+#' keyfile must 
 #' 
 #' @return A data table contaning the ground truth data for all participants found in inloc
 #' @export
-loadSpotTheDifference <- function(inloc){
+loadSpotTheDifference <- function(inloc, keyfile = NULL){
   
   
   col_names = c("eventtype",
@@ -75,6 +78,39 @@ loadSpotTheDifference <- function(inloc){
   # Eventtype isn't consistently coded annotation/annotations:
   attentions$eventtype <- recodevalues(attentions$eventtype, "annotations", "annotation")
   
+  
+  # Generate events for start and end of each part of the experiment
+  # These are a copy of the annotation line, but coded consistently
+  if(!is.null(keyfile)){
+    eventkey <- readr::read_csv(keyfile)
+    
+    
+    applyevents <- function(x){
+      
+      matchrowmask <- attentions["participantCode"] == x["participantCode"] & 
+        attentions$annotation == x["annotation"]
+      if(sum(matchrowmask, na.rm = TRUE) > 1){
+        stop(paste("Matched more than one event for", x["participantCode"], ":", x["annotation"]))
+      }
+      if(sum(matchrowmask, na.rm = TRUE) == 0){
+        warning(paste("couldn't match event for", x["participantCode"], ":", x["annotation"]))
+      }else{
+
+        matchrow <- attentions[matchrowmask, ]
+        matchrow$eventtype <- "event"
+        matchrow$annotation <- x["event"]
+        # Note - global assing
+        attentions <<-rbind(attentions, matchrow)
+        
+      }
+      
+    }
+    
+    apply(eventkey, 1,applyevents)
+    
+    
+    
+  }
   # Calculate the midpoint of each transition period 
   attentions$attTransMidss <- attentions$attTransStartss + (attentions$attTransEndss - attentions$attTransStartss)/2
   
@@ -111,7 +147,7 @@ getattention2 <- function(time, annoteset, annoteTimeColumn = "attTransMidss",
   }else{
     attention <- tail(annoteset[earliertimes, annoteAttentionColumn], n=1)
   }
-
+  
   if("tbl_df" %in% class(attention)){
     return (attention[[1]])
   }else{
