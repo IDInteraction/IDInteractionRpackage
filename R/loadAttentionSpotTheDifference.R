@@ -52,12 +52,18 @@ loadSpotTheDifference <- function(inloc, keyfile = NULL){
     )
     
     
-    thisattention$null <- NULL
+
     thisattention$participantCode <- participantCode
     
     attentions <- dplyr::bind_rows(attentions, thisattention)
     
   }
+  
+  # Just keep the columns we have in all files (ms timestamps aren't used anyway)
+  attentions <- attentions[,c(col_names16, "participantCode")]
+  
+  # remove dummy column
+  attentions <- attentions[,!(names(attentions)=="null")]
   
   # Correct typing errors
   attentions$annotation <- recodevalues(attentions$annotation, "TV_to_+tablet",
@@ -78,21 +84,34 @@ loadSpotTheDifference <- function(inloc, keyfile = NULL){
   # Eventtype isn't consistently coded annotation/annotations:
   attentions$eventtype <- recodevalues(attentions$eventtype, "annotations", "annotation")
   
+  if(sum(is.na(attentions$annotation)) > 0){
+    warning(paste(sum(is.na(attentions$annotation)), "missing annotations.  Dropping observations"))
+    attentions <- attentions[!is.na(attentions$annotation),]
+  }
+  
+  if(!all(complete.cases(attentions))){
+    stop("Missing data not allowed")
+  }
   
   # Generate events for start and end of each part of the experiment
   # These are a copy of the annotation line, but coded consistently
   if(!is.null(keyfile)){
     eventkey <- readr::read_csv(keyfile)
     
+    if(!all(complete.cases(eventkey))){
+      stop("Missing data not allowed in keyfile")
+    }
     
     applyevents <- function(x){
       
       matchrowmask <- attentions["participantCode"] == x["participantCode"] & 
         attentions$annotation == x["annotation"]
-      if(sum(matchrowmask, na.rm = TRUE) > 1){
+      #TODO - test no NAs in matchrowmask
+      
+      if(sum(matchrowmask) > 1){
         stop(paste("Matched more than one event for", x["participantCode"], ":", x["annotation"]))
       }
-      if(sum(matchrowmask, na.rm = TRUE) == 0){
+      if(sum(matchrowmask) == 0){
         warning(paste("couldn't match event for", x["participantCode"], ":", x["annotation"]))
       }else{
 
@@ -153,4 +172,25 @@ getattention2 <- function(time, annoteset, annoteTimeColumn = "attTransMidss",
   }else{
     return(attention)
   }
+}
+
+
+#' Get the frame offset for a kinect video wrt the webcam video
+#' 
+#' @param participantCode The participant code
+#' @param offsetfile The file containing the offsets; this shouldn't need to be changed
+#' TODO Make this a proper option
+#' 
+#' @return The number of frames to offset by.  Will stop if participant not found
+#' @export
+#' 
+getKinectWebcamOffset <- function(participantCode,
+                                  offsetfile="~/IDInteraction/spot_the_difference/controlfiles/frameoffsets.csv")
+{
+  
+  offsets <- read.csv(offsetfile, stringsAsFactors = FALSE)
+  
+  frameskip <- offsets[participantCode, "delta"]
+  
+  return(frameskip)
 }
