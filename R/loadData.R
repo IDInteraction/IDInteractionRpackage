@@ -514,7 +514,7 @@ recodevalues <- function(indata,  from, to, printgtr = 0, warngtr = 2){
   
   changes <- sum(indata != outdata, na.rm = TRUE)
   
-  changestring <- paste(changes ,"changes made to data")
+  changestring <- paste(changes ,"changes made to data:", from, "to", to)
   
   if(changes > printgtr){
     print(changestring)
@@ -538,7 +538,7 @@ recodevalues <- function(indata,  from, to, printgtr = 0, warngtr = 2){
 #' @export
 offsetTime <- function(intimes, offsettime = 0){
   
-  return(intimes - offsettime)
+  return( intimes + offsettime)
   
   
 }
