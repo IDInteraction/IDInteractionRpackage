@@ -62,6 +62,9 @@ loadSpotTheDifference <- function(inloc, keyfile = NULL){
   # Just keep the columns we have in all files (ms timestamps aren't used anyway)
   attentions <- attentions[,c(col_names16, "participantCode")]
   
+  # Remove hms timestamps, since not used
+  attentions <- attentions[, names(attentions)[is.na(stringr::str_match(names(attentions), "hms"))]]
+  
   # remove dummy column
   attentions <- attentions[,!(names(attentions)=="null")]
   
@@ -94,41 +97,81 @@ loadSpotTheDifference <- function(inloc, keyfile = NULL){
   }
   
   # Generate events for start and end of each part of the experiment
-  # These are a copy of the annotation line, but coded consistently
-  if(!is.null(keyfile)){
+  # These are constructed by matching on a (unique) annotation in the original file,
+  # or by generating a new event at the specified timestamp.
+  if (!is.null(keyfile)) {
     
     eventkey <- readr::read_csv(keyfile)
     
-    if(!all(complete.cases(eventkey))){
-      stop("Missing data not allowed in keyfile")
+    # We handle events we match by annotation and events we generate by timestamp separately
+    if (!("participantCode" %in% names(eventkey)))
+    {
+      stop("participantCode not found in input file")
+    }
+    if (!("event" %in% names(eventkey)))
+    {
+      stop("event not found in input file")
     }
     
-    applyevents <- function(x){
+    if(any(!xor(!is.na(eventkey$annotation), !is.na(eventkey$timestamp))))
+    {
+      stop("Can match by annotation or timestamp, nto both")
+    }
+    
+    if ("annotation" %in% names(eventkey))
+    {
       
-      matchrowmask <- attentions["participantCode"] == x["participantCode"] & 
-        attentions$annotation == x["annotation"]
-      #TODO - test no NAs in matchrowmask
+      eventkeyByEvent <- eventkey[!is.na(eventkey$annotation),c("participantCode", "event", "annotation")]
       
-      if(sum(matchrowmask) > 1){
-        stop(paste("Matched more than one event for", x["participantCode"], ":", x["annotation"]))
+      if (!all(complete.cases(eventkeyByEvent))) {
+        stop("Missing data not allowed in keyfile")
       }
-      if(sum(matchrowmask) == 0){
-        warning(paste("couldn't match event for", x["participantCode"], ":", x["annotation"]))
-      }else{
+      
+      applyevents <- function(x){
         
-        matchrow <- attentions[matchrowmask, ]
-        matchrow$eventtype <- "event"
-        matchrow$annotation <- x["event"]
-        # Note - global assing
-        attentions <<-rbind(attentions, matchrow)
-        # Replace row, to keep uniqueness of times
-        #attentions[matchrowmask, ] <<- matchrow
+        matchrowmask <- attentions["participantCode"] == x["participantCode"] & 
+          attentions$annotation == x["annotation"]
+        if(any(is.na(matchrowmask))){
+          stop("NAs found in matchrowmask")
+        }
+        
+        
+        if(sum(matchrowmask) > 1){
+          stop(paste("Matched more than one event for", x["participantCode"], ":", x["annotation"]))
+        }
+        if(sum(matchrowmask) == 0){
+          warning(paste("couldn't match event for", x["participantCode"], ":", x["annotation"]))
+        }else{
+          
+          matchrow <- attentions[matchrowmask, ]
+          matchrow$eventtype <- "event"
+          matchrow$annotation <- x["event"]
+          # Note - global assing
+          attentions <<- rbind(attentions, matchrow)
+          # Replace row, to keep uniqueness of times
+          #attentions[matchrowmask, ] <<- matchrow
+        }
+        
       }
       
+      apply(eventkeyByEvent, 1,applyevents)
     }
     
-    apply(eventkey, 1,applyevents)
-    
+    if ("timestamp" %in% names(eventkey))
+    {
+      
+      eventkeyByTimestamp <- eventkey[!is.na(eventkey$timestamp),c("participantCode", "event", "timestamp")]
+      
+      timestampevents <- data.frame(
+        eventtype = "event",
+        participantCode = eventkeyByTimestamp$participantCode,
+        attTransStartss = eventkeyByTimestamp$timestamp,
+        attTransEndss = eventkeyByTimestamp$timestamp,
+        attDurationss = 0,
+        annotation = eventkeyByTimestamp$event)
+      
+      attentions <- rbind(attentions,timestampevents)
+    }
     
     
   }
@@ -276,8 +319,8 @@ encodeTransitions <- function(indata){
   
   
   lagset <- attentiondata %>% dplyr::mutate(lagStart=lag(attTransStartss), 
-                               lagEnd=lag(attTransEndss),
-                               lagAnnotation=lag(annotation))
+                                            lagEnd=lag(attTransEndss),
+                                            lagAnnotation=lag(annotation))
   
   
   
@@ -312,8 +355,8 @@ encodeTransitions <- function(indata){
 #' 
 #' @export
 kinectTimeToWebcamTime <- function(KinectVideoTimes, KinectTimeStamps=NULL, KinectOffsetFrames, fps=30){
-
-
+  
+  
   
   if(!is.null(KinectTimeStamps)){
     
@@ -327,12 +370,12 @@ kinectTimeToWebcamTime <- function(KinectVideoTimes, KinectTimeStamps=NULL, Kine
     # Frame-by-frame comparison of times
     # We substract the first extracted time off all others, since the API
     # outputs an (apparently) arbitrary offset to the video file
-  
-      KinectVideoTimes=KinectTimeStamps-KinectTimeStamps[1]
-  
+    
+    KinectVideoTimes=KinectTimeStamps-KinectTimeStamps[1]
+    
   }
   
-
+  
   KinectOffsetSeconds <- KinectOffsetFrames/30
   
   offsettime <-  offsetTime(KinectVideoTimes, KinectOffsetSeconds)
@@ -357,11 +400,11 @@ getKinectFrameTimes <- function(participantCode,
   framefile <- paste0(frameloc, participantCode, "_framelist.csv")
   
   frames <- read.csv(framefile, header = FALSE, col.names = c("frame", "time"))
- 
-   if(!all(seq_along(frames$frame) == frames$frame)){
-     stop("Missing frames in input file")
-   }
-     
+  
+  if(!all(seq_along(frames$frame) == frames$frame)){
+    stop("Missing frames in input file")
+  }
+  
   
   return(frames$time)
 }
