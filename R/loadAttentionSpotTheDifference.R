@@ -7,7 +7,8 @@
 #' @return A data table containing the ground truth data for the participant
 #' 
 #' @export
-loadSpotTheDifferenceFile <- function(infile, keyfile = NULL, participantCode)
+loadSpotTheDifferenceFile <- function(infile, keyfile = NULL, participantCode,
+                                      sortfield = "attTransMidss")
 {
   
   col_names = c("eventtype",
@@ -172,6 +173,9 @@ loadSpotTheDifferenceFile <- function(infile, keyfile = NULL, participantCode)
   attentions$attTransMidss <- attentions$attTransStartss + 
     (attentions$attTransEndss - attentions$attTransStartss)/2
   
+  # Sort before returning
+  attentions <- attentions[order(attentions[[sortfield]]),]
+  
   return(attentions)
   
 }
@@ -287,7 +291,7 @@ getKinectWebcamOffset <- function(participantCode,
 #' @export
 extractBetweenEvents <- function(sortattentions, event1, event2, sortcheck = "attTransMidss"){
   # TODO test this is trapping correctly
-  if(is.unsorted(sortattentions[,sortcheck]))
+  if(is.unsorted(sortattentions[[sortcheck]]))
     stop("Data isn't sorted")
   
   

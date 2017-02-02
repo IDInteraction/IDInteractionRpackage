@@ -6,11 +6,11 @@ test_that("We can get attentions", {
   
   participantCode = "P07"
   
-  thisParticipanAttention <- attentions[attentions$participantCode==participantCode,]
+  thisParticipanAttention <- attentions[attentions$participantCode == participantCode,]
   
   
   expect_equal(getattention2(0, thisParticipanAttention),
-               "start_tablet")
+               "participant starts experiment") # Since gets attention over all annotation types
   
   # TODO test fully
   
