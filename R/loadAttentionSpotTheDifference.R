@@ -1,17 +1,14 @@
-
-#' Load the spot the difference ground truth data, and clean
+#' Load a sport the difference ground truth data file, and clean
 #' 
-#' Load the ground truth data from the spot the differnece experiment.   Correct coding errors on load and standardise events
-#' 
-#' @param inloc The folder containing the ground truth data
+#' @param infile The file containing the ground truth data for a participant
 #' @param keyfile An optional CSV file specifying how to recode annotations
-#'
-#' keyfile must 
+#' @param participantCode The participant code
 #' 
-#' @return A data table contaning the ground truth data for all participants found in inloc
+#' @return A data table containing the ground truth data for the participant
+#' 
 #' @export
-loadSpotTheDifference <- function(inloc, keyfile = NULL){
-  
+loadSpotTheDifferenceFile <- function(infile, keyfile = NULL, participantCode)
+{
   
   col_names = c("eventtype",
                 "null",
@@ -39,25 +36,13 @@ loadSpotTheDifference <- function(inloc, keyfile = NULL){
                   #"attDurationms",
                   "annotation")
   
+  attentions <- readr::read_delim(infile, 
+                                  delim = "\t",
+                                  col_names = (if (participantCode == "P16") {col_names16}else{col_names})
+  )
   
-  attentions <- NULL
+  attentions$participantCode <- participantCode
   
-  for(f in list.files(inloc)){
-    
-    participantCode <- stringr::str_match(f, "^(P\\d+)_")[2]
-    
-    thisattention <- readr::read_delim(paste0(inloc, f), 
-                                       delim="\t",
-                                       col_names = (if(participantCode=="P16"){col_names16}else{col_names})
-    )
-    
-    
-    
-    thisattention$participantCode <- participantCode
-    
-    attentions <- dplyr::bind_rows(attentions, thisattention)
-    
-  }
   
   # Just keep the columns we have in all files (ms timestamps aren't used anyway)
   attentions <- attentions[,c(col_names16, "participantCode")]
@@ -118,59 +103,67 @@ loadSpotTheDifference <- function(inloc, keyfile = NULL){
       stop("Can match by annotation or timestamp, nto both")
     }
     
+    # Subset to just the participant we're working on
+    eventkey <- eventkey[eventkey$participantCode == participantCode,]
+    
+    
     if ("annotation" %in% names(eventkey))
     {
       
       eventkeyByEvent <- eventkey[!is.na(eventkey$annotation),c("participantCode", "event", "annotation")]
-      
-      if (!all(complete.cases(eventkeyByEvent))) {
-        stop("Missing data not allowed in keyfile")
-      }
-      
-      applyevents <- function(x){
-        
-        matchrowmask <- attentions["participantCode"] == x["participantCode"] & 
-          attentions$annotation == x["annotation"]
-        if(any(is.na(matchrowmask))){
-          stop("NAs found in matchrowmask")
+      if (nrow(eventkeyByEvent) > 0)
+      {
+        if (!all(complete.cases(eventkeyByEvent))) {
+          stop("Missing data not allowed in keyfile")
         }
         
-        
-        if(sum(matchrowmask) > 1){
-          stop(paste("Matched more than one event for", x["participantCode"], ":", x["annotation"]))
-        }
-        if(sum(matchrowmask) == 0){
-          warning(paste("couldn't match event for", x["participantCode"], ":", x["annotation"]))
-        }else{
+        applyevents <- function(x){
           
-          matchrow <- attentions[matchrowmask, ]
-          matchrow$eventtype <- "event"
-          matchrow$annotation <- x["event"]
-          # Note - global assing
-          attentions <<- rbind(attentions, matchrow)
-          # Replace row, to keep uniqueness of times
-          #attentions[matchrowmask, ] <<- matchrow
+          matchrowmask <- attentions["participantCode"] == x["participantCode"] & 
+            attentions$annotation == x["annotation"]
+          if(any(is.na(matchrowmask))){
+            stop("NAs found in matchrowmask")
+          }
+          
+          
+          if(sum(matchrowmask) > 1){
+            stop(paste("Matched more than one event for", x["participantCode"], ":", x["annotation"]))
+          }
+          if(sum(matchrowmask) == 0){
+            warning(paste("couldn't match event for", x["participantCode"], ":", x["annotation"]))
+          }else{
+            
+            matchrow <- attentions[matchrowmask, ]
+            matchrow$eventtype <- "event"
+            matchrow$annotation <- x["event"]
+            # Note - global assing
+            attentions <<- rbind(attentions, matchrow)
+            # Replace row, to keep uniqueness of times
+            #attentions[matchrowmask, ] <<- matchrow
+          }
+          
         }
         
+        apply(eventkeyByEvent, 1,applyevents)
       }
-      
-      apply(eventkeyByEvent, 1,applyevents)
     }
-    
     if ("timestamp" %in% names(eventkey))
     {
       
       eventkeyByTimestamp <- eventkey[!is.na(eventkey$timestamp),c("participantCode", "event", "timestamp")]
       
-      timestampevents <- data.frame(
-        eventtype = "event",
-        participantCode = eventkeyByTimestamp$participantCode,
-        attTransStartss = eventkeyByTimestamp$timestamp,
-        attTransEndss = eventkeyByTimestamp$timestamp,
-        attDurationss = 0,
-        annotation = eventkeyByTimestamp$event)
-      
-      attentions <- rbind(attentions,timestampevents)
+      if (nrow(eventkeyByTimestamp) > 0) 
+      {
+        timestampevents <- data.frame(
+          eventtype = "event",
+          participantCode = eventkeyByTimestamp$participantCode,
+          attTransStartss = eventkeyByTimestamp$timestamp,
+          attTransEndss = eventkeyByTimestamp$timestamp,
+          attDurationss = 0,
+          annotation = eventkeyByTimestamp$event)
+        
+        attentions <- rbind(attentions,timestampevents)
+      }
     }
     
     
@@ -181,6 +174,36 @@ loadSpotTheDifference <- function(inloc, keyfile = NULL){
   
   return(attentions)
   
+}
+
+
+
+#' Load the spot the difference ground truth data, and clean
+#' 
+#' Load the ground truth data from the spot the differnece experiment.   Correct coding errors on load and standardise events
+#' 
+#' @param inloc The folder containing the ground truth data
+#' @param keyfile An optional CSV file specifying how to recode annotations
+#'
+#' 
+#' 
+#' @return A data table contaning the ground truth data for all participants found in inloc
+#' @export
+loadSpotTheDifference <- function(inloc, keyfile = NULL){
+  attentions <- NULL
+  
+  for (f in list.files(inloc)) {
+    
+    p <- stringr::str_extract(f, "P\\d\\d")[1]    
+    
+    thisattention <- loadSpotTheDifferenceFile(paste0(inloc, f), keyfile = keyfile,
+                                               participantCode = p)
+    
+    
+    attentions <- dplyr::bind_rows(attentions, thisattention)
+  }
+  
+  return(attentions)
 }
 
 
@@ -401,7 +424,8 @@ getKinectFrameTimes <- function(participantCode,
   
   frames <- read.csv(framefile, header = FALSE, col.names = c("frame", "time"))
   
-  if(!all(seq_along(frames$frame) == frames$frame)){
+  if (!all(seq_along(frames$frame) == frames$frame))
+  {
     stop("Missing frames in input file")
   }
   
