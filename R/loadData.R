@@ -504,7 +504,7 @@ addPredictionsToTracking <- function(trackfile, predfile){
 #' 
 #' @return A vector containing the data with changes applied
 #' @export
-recodevalues <- function(indata,  from, to, printgtr = 0, warngtr = 2){
+recodevalues <- function(indata,  from, to, printgtr = 50, warngtr = 50){
   
   if(printgtr > warngtr){
     warngtr <- printgtr
