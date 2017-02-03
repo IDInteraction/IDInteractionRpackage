@@ -77,3 +77,76 @@ loadOpenfaceAndAttention <- function(attentionfile,
   return(openface)
   
 } 
+
+
+
+#' Load cppMT and attention data, and join (taking account of frame offsets and skips)
+#' 
+#' keyfile contains the annotations we wish to manually extract as "events", which we later filter on
+#' 
+#' If the videosource is "kinect" the necessary transformations will be applied to the timestamps to 
+#' synchronise the kinect video to the webcam (which the ground truth was encoded from).
+#' 
+#' @param attentionfile The file containing the ground truth attention data (named Pxx_attention.txt)
+#' @param keyfile The file containing annotations we wish to define as events
+#' @param openfacefile The file containing the openface data
+#' @param videosource The source of the video; webcam, kinect
+#'
+#' @return A dataframe containing the openface and ground truth data
+#' 
+#' @export
+loadcppMTAndAttention <- function(attentionfile,
+                                     keyfile = NULL,
+                                     cppmtfile,
+                                     videosource ="specify",
+                                     participantCode ){
+  
+  
+  if (!(videosource %in% c("kinect", "webcam")))
+  {
+    stop("Video source must be kinect or webcam")
+  }
+  
+  
+  
+  attentions <- loadSpotTheDifferenceFile(attentionfile,
+                                          keyfile = keyfile,
+                                          participantCode = participantCode)
+  
+  
+  cppmtData <- loadParticipantTrackingData(cppmtfile)
+  cppmtData$timestamp <- cppmtData$time/1000
+  
+  thisParticipanAttention <- attentions[attentions$participantCode == participantCode,]
+  thisParticipanAttention <- thisParticipanAttention[order(thisParticipanAttention$attTransMidss),]
+  
+  if (videosource == "kinect")
+  {
+    
+    webcamKinectOffsetFrames <- getKinectWebcamOffset(participantCode)
+    KinectFrameTimes <- getKinectFrameTimes(participantCode, returnFrames = TRUE)
+    
+    cppmtData$webcamtime <- kinectTimeToWebcamTime( cppmtData[,c("frame", "timestamp")], 
+                                                    KinectFrameTimes,webcamKinectOffsetFrames)
+  }else{
+    cppmtData$webcamtime <- cppmtData$timestamp
+  }
+  
+  # Attach attentions
+  cppmtData$attention <- sapply(cppmtData$webcamtime, getattention2,
+                               annoteset = thisParticipanAttention[thisParticipanAttention$eventtype == "attention",])
+  
+  
+  cppmtData$attention <- factor(cppmtData$attention)
+  
+  # Drop kinect time and replace with webcamtime
+  cppmtData$time <- cppmtData$webcamtime * 1000
+  
+  featureset <- createFeatureDF(cppmtData, participantCode)
+  
+  
+  featureset$time <- featureset$timestampms / 1000
+  
+  return(featureset)
+  
+}
