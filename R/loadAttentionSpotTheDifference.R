@@ -385,20 +385,55 @@ kinectTimeToWebcamTime <- function(KinectVideoTimes, KinectTimeStamps=NULL, Kine
   
   
   
-  if(!is.null(KinectTimeStamps)){
+  if (!is.null(KinectTimeStamps))
+  { #  Need to do remapping
     
-    if(length(KinectTimeStamps) != length(KinectVideoTimes)){
-      stop(paste("Actual video timestamps and extracted timestamps must be the same length",
-                 "Loaded timestamps:", length(KinectTimeStamps),
-                 "Video times:", length(KinectVideoTimes)))
+    if (is.null(dim(KinectTimeStamps)) & is.null(dim(KinectVideoTimes)))
+    { # We have vectors - match position wise
+      if (length(KinectTimeStamps) != length(KinectVideoTimes))
+      {
+        stop(paste("Actual video timestamps and extracted timestamps must be the same length",
+                   "Loaded timestamps:", length(KinectTimeStamps),
+                   "Video times:", length(KinectVideoTimes)))
+      }
+      
+      # Frame-by-frame comparison of times
+      # We substract the first extracted time off all others, since the API
+      # outputs an (apparently) arbitrary offset to the video file
+      
+      KinectVideoTimes = KinectTimeStamps - KinectTimeStamps[1]
+      
+    }
+    else if (!is.null(dim(KinectTimeStamps)) & !is.null(dim(KinectVideoTimes)))
+    {
+
+      
+      if (nrow(KinectTimeStamps) < nrow(KinectVideoTimes)) 
+      {
+        stop("Timestamps < videoTimes")
+      }
+      
+      # Remove abritrary offset from kinect times.  
+      KinectTimeStamps$time <- KinectTimeStamps$time - KinectTimeStamps$time[1]
+      
+      joined <- dplyr::inner_join(KinectTimeStamps, KinectVideoTimes, by = "frame")
+      
+      if (nrow(joined) != nrow(KinectVideoTimes))
+      {
+        stop("Frames lost in join")
+      }
+      
+      KinectVideoTimes = joined$time 
+    }
+    else
+    {
+      stop("Must provide vectors for both times, to match elementwise, or arrays to match framewise")
     }
     
     
-    # Frame-by-frame comparison of times
-    # We substract the first extracted time off all others, since the API
-    # outputs an (apparently) arbitrary offset to the video file
     
-    KinectVideoTimes=KinectTimeStamps-KinectTimeStamps[1]
+    
+    
     
   }
   
@@ -417,12 +452,13 @@ kinectTimeToWebcamTime <- function(KinectVideoTimes, KinectTimeStamps=NULL, Kine
 #' 
 #' @param participantCode The code of the participant whose data we wish to load
 #' @param frameloc The location of the framelist files
-#' 
+#' @param returnFrames Return the frame numbers as well as their times
 #' @return A vector of times
 #' 
 #' @export
 getKinectFrameTimes <- function(participantCode,
-                                frameloc = "~/IDInteraction/spot_the_difference/kinect/"){
+                                frameloc = "~/IDInteraction/spot_the_difference/kinect/",
+                                returnFrames = FALSE){
   
   framefile <- paste0(frameloc, participantCode, "_framelist.csv")
   
@@ -433,6 +469,12 @@ getKinectFrameTimes <- function(participantCode,
     stop("Missing frames in input file")
   }
   
-  
-  return(frames$time)
+  if (returnFrames == TRUE) 
+  {
+    return(frames)
+  } 
+  else 
+  {
+    return(frames$time)
+  }
 }
