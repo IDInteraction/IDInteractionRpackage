@@ -16,7 +16,7 @@ test_that("We can get attentions", {
   
   # Encode transitions
   
-  testparticipant <- attentions[attentions$participantCode=="P01",]
+  testparticipant <- attentions[attentions$participantCode == "P01",]
   transset <- encodeTransitions(testparticipant)
   
   expect_equal(getattention2(83.2, transset, 
@@ -31,3 +31,17 @@ test_that("We can get attentions", {
   
   
 })
+
+
+
+test_that("We can write attentions", {
+  
+  att <- factor(c("a","b","b","a"))
+  frames <- seq_along(att)
+  outfile <- tempfile()
+  
+  expect_silent(writeAttentions(att, frames, outfile))
+  
+  unlink(outfile)
+  
+} )
