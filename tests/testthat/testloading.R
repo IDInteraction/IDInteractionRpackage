@@ -33,11 +33,30 @@ test_that("We don't get duplicate columns in createTrackingAnnotation",{
 })
 
 test_that("We can load data", {
-exptdata<-loadExperimentData("P01", 
+exptdata <- loadExperimentData("P01", 
                              trackingLoc = trackingLoc,
                              annoteLoc = annoteLoc)
 
 
 expect_equal(length(names(exptdata)),length(unique(names(exptdata))))
 table(names(exptdata))
+})
+
+test_that("Changing openface reading code doesnt break things", {
+  
+  openfacedata <- readOpenFace("testopenface.csv")
+
+  expect_equal(nrow(openfacedata), 9)
+
+  expect_equal(read.csv("testopenface.csv"), readOpenFace("testopenface.csv"))
+  expect_error(readOpenFace("testopenfaceMissingFrame.csv", checkValid = TRUE))
+  expect_equal(read.csv("testopenfaceMissingFrame.csv"), readOpenFace("testopenfaceMissingFrame.csv"))
+  expect_error(loadOpenfaceAndAttention("nullfille", keyfile = NULL, "testopenfaceMissingFrame.csv",
+                                        videosource = "kinect", participantCode = "P01", checkValid = TRUE),
+               "Missing frames in OpenFace data")
+  
+  expect_error(readOpenFace("testopenfaceMissingValue.csv", checkValid = TRUE),
+               "Missing values in OpenFace data")
+  expect_equal(read.csv("testopenfaceMissingValue.csv"),readOpenFace("testopenfaceMissingValue.csv"))
+  
 })

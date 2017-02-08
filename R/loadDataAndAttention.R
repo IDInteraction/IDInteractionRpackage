@@ -1,14 +1,26 @@
 #' Read an openface file
 #' 
 #' @param infile
+#' @param checkValid Whether to perform (some) checks on the validity of input data
 #' 
 #' @return The open face data
 #' 
 #' @export
-readOpenFace <- function(infile){
+readOpenFace <- function(infile, checkValid = FALSE){
   
-  openface <- read.csv(infile)
-  
+  openface <- data.table::fread(infile, data.table = FALSE)
+  if (checkValid)
+  {
+    if (!all( seq( from = openface$frame[1], by = 1, length.out = nrow(openface)) == openface$frame))
+    {
+      stop("Missing frames in OpenFace data")
+    }
+    
+    if (!all(complete.cases(openface)) )
+    {
+      stop("Missing values in OpenFace data")
+    }
+  }
   
   return(openface)
   
@@ -36,24 +48,31 @@ loadOpenfaceAndAttention <- function(attentionfile,
                                      keyfile = NULL,
                                      openfacefile,
                                      videosource ="specify",
-                                     participantCode ){
+                                     participantCode, ... ){
   
   if (!(videosource %in% c("kinect", "webcam")))
   {
     stop("Video source must be kinect or webcam")
   }
   
+  args <- list(...)
   
+
   
-  attentions <- loadSpotTheDifferenceFile(attentionfile,
+  if ("checkValid" %in% names(args))
+  {
+    openface <- readOpenFace(openfacefile, checkValid = TRUE)
+  }
+  else
+  {
+    openface <- readOpenFace(openfacefile)
+  }
+
+    attentions <- loadSpotTheDifferenceFile(attentionfile,
                                           keyfile = keyfile,
                                           participantCode = participantCode)
-  
-  
-  openface <- readOpenFace(openfacefile)
-  
-  thisParticipanAttention <- attentions[attentions$participantCode == participantCode,]
-  thisParticipanAttention <- thisParticipanAttention[order(thisParticipanAttention$attTransMidss),]
+    thisParticipanAttention <- attentions[attentions$participantCode == participantCode,]
+    thisParticipanAttention <- thisParticipanAttention[order(thisParticipanAttention$attTransMidss),]
   
   if (videosource == "kinect")
   {
@@ -96,10 +115,10 @@ loadOpenfaceAndAttention <- function(attentionfile,
 #' 
 #' @export
 loadcppMTAndAttention <- function(attentionfile,
-                                     keyfile = NULL,
-                                     cppmtfile,
-                                     videosource ="specify",
-                                     participantCode ){
+                                  keyfile = NULL,
+                                  cppmtfile,
+                                  videosource ="specify",
+                                  participantCode ){
   
   
   if (!(videosource %in% c("kinect", "webcam")))
@@ -134,7 +153,7 @@ loadcppMTAndAttention <- function(attentionfile,
   
   # Attach attentions
   cppmtData$attention <- sapply(cppmtData$webcamtime, getattention2,
-                               annoteset = thisParticipanAttention[thisParticipanAttention$eventtype == "attention",])
+                                annoteset = thisParticipanAttention[thisParticipanAttention$eventtype == "attention",])
   
   
   cppmtData$attention <- factor(cppmtData$attention)
