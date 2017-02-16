@@ -1,6 +1,6 @@
 #' Read an openface file
 #' 
-#' @param infile
+#' @param infile The input file
 #' @param checkValid Whether to perform (some) checks on the validity of input data
 #' 
 #' @return The open face data
