@@ -73,6 +73,32 @@ loadTimestampsSheet <- function(infile = "~/IDInteraction/spot_the_difference/co
   return(timestamps)
 }
 
+
+#' Remove spurious (?) "STREAM" entries from sensor data
+#' 
+#' @param indata  Some sensor data
+#' @param verbose Whether to report what we're doing
+#' 
+#' @return The sensor data with invalid readings removed
+#' 
+#' At the moment we just look for "STREAM" in the tabletTime column, and (optionally) report
+cleanSensorData <- function(indata, verbose = TRUE){
+ # Warnings suppressed since the creation of the NAs will throw a warning 
+  badrows <- suppressWarnings(is.na(as.numeric(indata$tabletTime)))
+  
+  if (verbose) {
+    print("The following rows will be removed")
+    print(indata[badrows,])
+  }
+  
+  indata <- indata[!badrows, ]
+  
+  indata$tabletTime <- as.numeric(indata$tabletTime)
+  
+  return(indata)
+}
+
+
 #' Read in accelerometer or gyro data from a file, and add useful fields
 #' 
 #' @param infile The input file
@@ -81,13 +107,24 @@ loadTimestampsSheet <- function(infile = "~/IDInteraction/spot_the_difference/co
 readSensdataFile <- function(infile){
   
   # First row is incomplete
-  sensdata <- read.csv(infile, header = TRUE, col.names = c("tabletTime", "eventTime", "sens1", "sens2", "sens3") )
+  sensdata <- read.csv(infile, header = TRUE,
+                       col.names = c("tabletTime", "eventTime", "sens1", "sens2", "sens3"),
+                       stringsAsFactors = FALSE)
   
   sensdata$sensabs <- with(sensdata, sqrt(sens1**2 + sens2**2 + sens3**2))
   sensdata$relTime <- (sensdata$eventTime - sensdata$eventTime[1])/1000
   
-  # Timebase is very irregular;  appears to have been recorded at 20fps, but some readings are just a couple of ms apart.  Unsure of the best approach to handle this.  
-  
+  # Check each column is numeric
+  needclean = FALSE
+  for (n in names(sensdata)) {
+    if (!is.numeric(sensdata[,n])) {
+      warning(paste("Non numeric data found in column:", n))
+      needclean = TRUE
+    }
+  }
+  if (needclean) { 
+    sensdata <- cleanSensorData(sensdata)
+  }
   return(sensdata)
 }
 
@@ -130,14 +167,33 @@ readSensData <- function(participantCode, sensortype, hand,
   }
   
   
-  
-  timestamps <- loadTimestampsSheet()
-  
-  
   return(sensdata)
   
 }
 
+#' Convert an epoch time to a webcam time, for a given participant
+#' 
+#' Given an epoch timestamp and a participantCode, what's the time in the webcam timeframe?
+#' 
+#' @param epochtime The epoch timestamp
+#' @param participantCode The participant code
+#' @param timefunction The function to call to load the offset data
+#' 
+#' @return The corresponding webcam time, in seconds
+#' 
+#' @export
+epochToWebcam <- function(epochtime, participantCode, timefunction=loadTimestampsSheet){
+  
+  
+  timestamps <- timefunction()
+  weblogStartEpoch <- timestamps[timestamps$participantCode == participantCode, "weblogStart"] 
+  weblogStartWebcam <- timestamps[timestamps$participantCode == participantCode, "multiInputVideo"] * 1000
+  
+  eventtimeMS <- epochtime - weblogStartEpoch + weblogStartWebcam
+  
+  eventtime <- eventtimeMS / 1000
+  return(eventtime)
+}
 
 #' Map the sensor data to webcam time
 #' 
@@ -155,11 +211,8 @@ readSensData <- function(participantCode, sensortype, hand,
 #' 
 #' @export
 mapSensorData <- function(sensdata, participantCode, timefunction = loadTimestampsSheet){
-  
-  timestamps <- timefunction()
-  
-  # Webcamtime is the difference between the epoch time each sensor reading was made at minus the weblogstart epoch.  This gets us a relative time from weblogStart.  This time is "multiInputVideo" in the timestamps file
-  sensdata$webcamTime <- (sensdata$eventTime - timestamps[timestamps$participantCode == participantCode, "weblogStart"])/1000 + timestamps[timestamps$participantCode == "P01", "multiInputVideo"]
+  # Convert the epoch time to webcam time
+  sensdata$webcamTime <- epochToWebcam(sensdata$eventTime, participantCode)
   
   # And map to closest video frame
   sensdata$framefloat <- sensdata$webcamTime * 30
@@ -179,12 +232,12 @@ mapSensorData <- function(sensdata, participantCode, timefunction = loadTimestam
   allframes <- data.frame(frame = seq(min(dedup$frame), to = max(dedup$frame), by = 1))
   allframes <- dplyr::left_join(allframes, dedup, by = "frame" )
   
-    colstems <- stringr::str_match(names(allframes), "^(acc|gyro|sens)(\\d+|abs)")[,1]
-    interpcols <- names(allframes)[!is.na(colstems)]
+  colstems <- stringr::str_match(names(allframes), "^(acc|gyro|sens)(\\d+|abs)")[,1]
+  interpcols <- names(allframes)[!is.na(colstems)]
   for (i in interpcols) {
     allframes[,i] <- zoo::na.approx(allframes[,i])
   }
-    
+  
   return(allframes)
 }
 
