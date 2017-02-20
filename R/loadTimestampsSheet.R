@@ -206,38 +206,78 @@ epochToWebcam <- function(epochtime, participantCode, timefunction=loadTimestamp
 #' @param sensdata The sensor data
 #' @param participantCode The participant the sensor data is for
 #' @param timefunction The function to call to load the offset data
+#' @param webcamFps The frame rate of the webcam stream
+#' @param maxgap The maximum number of NAs to interpolate between
 #' 
 #' @return The sensor data, mapped to webcam time
 #' 
 #' @export
-mapSensorData <- function(sensdata, participantCode, timefunction = loadTimestampsSheet){
+mapSensorData <- function(sensdata, participantCode, timefunction = loadTimestampsSheet,
+                          webcamFps = 30, maxgap = 3){
   # Convert the epoch time to webcam time
   sensdata$webcamTime <- epochToWebcam(sensdata$eventTime, participantCode)
   
   # And map to closest video frame
   sensdata$framefloat <- sensdata$webcamTime * 30
   sensdata$frame <- round(sensdata$framefloat)
-  #  Some frames have > 1 set of accelrations associated with them, owing to the irregular capture frequency. 
   # drop frames before the webcam started
   sensdata <- sensdata[sensdata$frame > 0,]
-  # Want to end up with 1 row per frame.  
-  # Where we have more than one row per frame, keep the one closest to an integer number of frames
-  sensdata$frameoffset <- abs(sensdata$frame - sensdata$framefloat)
-  sensdata <- sensdata[order(sensdata$frame, sensdata$frameoffset),]
-  dedup <- sensdata[!duplicated(sensdata$frame, fromLast = FALSE),]
+
   
-  # Interpolate where we lack a sensor reading for the frame
+  # Our sensor data is irregularly sampled (or has an irregular timestamp), contains dropouts and 
+  # is sampled at a different rate to the webcam video.  
+  # WE ASSUME THE EVENTTIME IS CORRECT - this (probably) isn't (quite) the case
   
-  # First we make missing observations where we lack a frame
-  allframes <- data.frame(frame = seq(min(dedup$frame), to = max(dedup$frame), by = 1))
-  allframes <- dplyr::left_join(allframes, dedup, by = "frame" )
+  # We make a list of webcamtimes corresponding to our webcam frame rate, add these into the time series and use
+  # the zoo package to interpolate between the missing values (corresponding to webcam time) and the observed
   
-  colstems <- stringr::str_match(names(allframes), "^(acc|gyro|sens)(\\d+|abs)")[,1]
-  interpcols <- names(allframes)[!is.na(colstems)]
-  for (i in interpcols) {
-    allframes[,i] <- zoo::na.approx(allframes[,i])
+  
+  # There are some timestamps where we have > 1 reading; i.e. two events have arrived within
+  # 1ms 
+  # We handle these by taking the average of each of them
+  # ett <- table(sensdata$eventTime)
+  #length( ett[ett>1])
+  
+  deduped <- list()
+  tsfields <- c("acc1", "acc2", "acc3", "accabs")
+  for (tsfield in tsfields) {
+    # Warnings suppressed since we know we have duplicate timestamps
+    thisSeries <- suppressWarnings(zoo::zoo(sensdata[,tsfield], sensdata$webcamTime))
+    deduped[[tsfield]] <- aggregate(thisSeries, identity, mean)
+    
   }
   
+  dedupeddf <- data.frame(deduped)
+  dedupeddf$webcamtime <- time(deduped[[1]])
+  
+  dedupeddf$actualFrameTime <- dedupeddf$webcamtime
+  
+  frameTimes <- data.frame(actualFrameTime = seq(from = 0,
+                                                 to = max(sensdata$webcamTime),
+                                                 by = 1/webcamFps),
+                           webcamFrame = TRUE
+  )
+  
+  
+  
+  
+  joinedseries <- dplyr::full_join(dedupeddf, frameTimes, by = "actualFrameTime")
+  joinedseries <- joinedseries[order(joinedseries$actualFrameTime, joinedseries$webcamFrame),]
+  
+  interpolated <- list()
+  for (tsfield in tsfields) {
+    thisSeries <- zoo::zoo(joinedseries[, tsfield], order.by = joinedseries$actualFrameTime)
+    interpolated[[tsfield]] <- zoo::na.approx(thisSeries, na.rm = FALSE, maxgap = maxgap)
+  }
+  
+  
+  interpolateddf <- data.frame(interpolated)
+  interpolateddf$actualFrameTime <- joinedseries$actualFrameTime
+  interpolateddf$webcamFrame = joinedseries$webcamFrame
+  
+  allframes <- interpolateddf[!is.na(interpolateddf$webcamFrame),]
+  
+
   return(allframes)
 }
 
