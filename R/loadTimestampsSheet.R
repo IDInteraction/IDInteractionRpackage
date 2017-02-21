@@ -47,9 +47,13 @@ loadTimestampsSheet <- function(infile = "~/IDInteraction/spot_the_difference/co
   # If we have multiple times we only want the last; times are delmited by /s
   getLasttime <- function(indata){
     
-    lasttime <- stringr::str_match(indata, "/(.+)$")
-    consolidatedTimes <- ifelse(is.na(lasttime[,2]), indata, lasttime[,2])
-    
+    lasttime <- stringr::str_match(indata, "/?(?:((\\d+)?:)?)(\\d+)\\.(\\d+)$")
+    consolidatedTimes <- paste0(ifelse(is.na(lasttime[,3]), 0, lasttime[,3]),
+                                ":",
+                                lasttime[,4], ".", 
+                                lasttime[,5])
+   # Deal with missing minutes for P16
+   
     return(consolidatedTimes)
   }
   
@@ -83,7 +87,7 @@ loadTimestampsSheet <- function(infile = "~/IDInteraction/spot_the_difference/co
 #' 
 #' At the moment we just look for "STREAM" in the tabletTime column, and (optionally) report
 cleanSensorData <- function(indata, verbose = TRUE){
- # Warnings suppressed since the creation of the NAs will throw a warning 
+  # Warnings suppressed since the creation of the NAs will throw a warning 
   badrows <- suppressWarnings(is.na(as.numeric(indata$tabletTime)))
   
   if (verbose) {
@@ -102,9 +106,11 @@ cleanSensorData <- function(indata, verbose = TRUE){
 #' Read in accelerometer or gyro data from a file, and add useful fields
 #' 
 #' @param infile The input file
+#' @param checkorder Whether to check the timestamps are in the correct order
+#' @param warnBadData Whether to warn or just print a message if data are removed
 #' 
 #' @return A data frame containing the accelerometer data
-readSensdataFile <- function(infile){
+readSensdataFile <- function(infile, checkorder = TRUE, warnBadData = FALSE){
   
   # First row is incomplete
   sensdata <- read.csv(infile, header = TRUE,
@@ -112,19 +118,36 @@ readSensdataFile <- function(infile){
                        stringsAsFactors = FALSE)
   
   sensdata$sensabs <- with(sensdata, sqrt(sens1**2 + sens2**2 + sens3**2))
-  sensdata$relTime <- (sensdata$eventTime - sensdata$eventTime[1])/1000
+  sensdata$relTime <- (sensdata$eventTime - min(sensdata$eventTime))/1000
   
   # Check each column is numeric
   needclean = FALSE
   for (n in names(sensdata)) {
     if (!is.numeric(sensdata[,n])) {
-      warning(paste("Non numeric data found in column:", n))
+      baddatamsg = paste("Non numeric data found in column:", n) 
+      if (warnBadData)
+        warning(baddatamsg)
+      else
+        print(baddatamsg) 
       needclean = TRUE
     }
   }
   if (needclean) { 
     sensdata <- cleanSensorData(sensdata)
   }
+  
+  if (checkorder) {
+    if (any(cummax(sensdata$eventTime) != sensdata$eventTime)) {
+      stop("Event times in incorrect order")
+    }
+    # Check the times are in ascending order
+    if (any(cummax(sensdata$tabletTime) != sensdata$tabletTime)) {
+      stop("Tablet times in incorrect order")
+    }
+  }
+  
+  
+  
   return(sensdata)
 }
 
@@ -140,7 +163,7 @@ readSensdataFile <- function(infile){
 #' @export
 readSensData <- function(participantCode, sensortype, hand, 
                          sensorloc = "~/IDInteraction/spot_the_difference/sensors/",
-                         renamecols = TRUE) 
+                         renamecols = TRUE, ...) 
 {
   
   if (!(tolower(sensortype) %in% c("acc", "gyro")))
@@ -157,7 +180,7 @@ readSensData <- function(participantCode, sensortype, hand,
   
   sensfile <- paste0(sensorloc, participantCode, "_STREAM", tolower(sensortype), casehand, ".csv")
   
-  sensdata <- readSensdataFile(sensfile)
+  sensdata <- readSensdataFile(sensfile, ...)
   #rename columns to reflect data type
   if (renamecols)
   {
@@ -208,12 +231,13 @@ epochToWebcam <- function(epochtime, participantCode, timefunction=loadTimestamp
 #' @param timefunction The function to call to load the offset data
 #' @param webcamFps The frame rate of the webcam stream
 #' @param maxgap The maximum number of NAs to interpolate between
+#' @param maxtime The maximum time to map, in seconds, with respect to the video
 #' 
 #' @return The sensor data, mapped to webcam time
 #' 
 #' @export
 mapSensorData <- function(sensdata, participantCode, timefunction = loadTimestampsSheet,
-                          webcamFps = 30, maxgap = 3){
+                          webcamFps = 30, maxgap = 3, maxtime = Inf){
   # Convert the epoch time to webcam time
   sensdata$webcamTime <- epochToWebcam(sensdata$eventTime, participantCode)
   
@@ -222,7 +246,7 @@ mapSensorData <- function(sensdata, participantCode, timefunction = loadTimestam
   sensdata$frame <- round(sensdata$framefloat)
   # drop frames before the webcam started
   sensdata <- sensdata[sensdata$frame > 0,]
-
+  
   
   # Our sensor data is irregularly sampled (or has an irregular timestamp), contains dropouts and 
   # is sampled at a different rate to the webcam video.  
@@ -239,7 +263,13 @@ mapSensorData <- function(sensdata, participantCode, timefunction = loadTimestam
   #length( ett[ett>1])
   
   deduped <- list()
-  tsfields <- c("acc1", "acc2", "acc3", "accabs")
+  tsfields <- names(sensdata)[3:6]
+  
+  # The fields to interpolate are extracted by position
+  # This isn't particularly safe, to the following function checks they are 
+  # plausbily named
+  validateTSFields(tsfields)
+  
   for (tsfield in tsfields) {
     # Warnings suppressed since we know we have duplicate timestamps
     thisSeries <- suppressWarnings(zoo::zoo(sensdata[,tsfield], sensdata$webcamTime))
@@ -251,9 +281,18 @@ mapSensorData <- function(sensdata, participantCode, timefunction = loadTimestam
   dedupeddf$webcamtime <- time(deduped[[1]])
   
   dedupeddf$actualFrameTime <- dedupeddf$webcamtime
+  if (maxtime == Inf) {
+    encodetime = max(sensdata$webcamTime)
+  } else {
+    if (max(sensdata$webcamTime) < maxtime) { 
+      warning(paste("Specified endtime (", maxtime ,") is beyond the end of the sensor data (",
+                    max(sensdata$webcamTime), ")"))
+      }
+    encodetime = min(max(sensdata$webcamTime), maxtime)
+  }
   
   frameTimes <- data.frame(actualFrameTime = seq(from = 0,
-                                                 to = max(sensdata$webcamTime),
+                                                 to = encodetime,
                                                  by = 1/webcamFps),
                            webcamFrame = TRUE
   )
@@ -273,11 +312,26 @@ mapSensorData <- function(sensdata, participantCode, timefunction = loadTimestam
   
   interpolateddf <- data.frame(interpolated)
   interpolateddf$actualFrameTime <- joinedseries$actualFrameTime
-  interpolateddf$webcamFrame = joinedseries$webcamFrame
+  interpolateddf$webcamFrame <- joinedseries$webcamFrame
+  interpolateddf$frame = interpolateddf$actualFrameTime * webcamFps + 1
   
   allframes <- interpolateddf[!is.na(interpolateddf$webcamFrame),]
+  allframes$webcamFrame <- NULL
   
-
   return(allframes)
 }
 
+#' Check that the fields we've extracted are credible names for our sensor objects
+#' 
+#' @param fields
+#' 
+#' @return Nothing - will error if names are invalid
+#' 
+validateTSFields <- function(fields) {
+  
+  checknames <- stringr::str_match(fields, "\\w+(abs|\\d+)")
+  if (any(is.na(checknames[,2]))) {
+    stop("Invalid sensor field names")
+  }
+  
+}
