@@ -188,17 +188,17 @@ loadSpotTheDifferenceFile <- function(infile, keyfile = NULL, participantCode,
 #' 
 #' @param inloc The folder containing the ground truth data
 #' @param keyfile An optional CSV file specifying how to recode annotations
-#'
+#' @param filepat The file pattern to match
 #' 
 #' 
 #' @return A data table contaning the ground truth data for all participants found in inloc
 #' @export
-loadSpotTheDifference <- function(inloc, keyfile = NULL){
+loadSpotTheDifference <- function(inloc, keyfile = NULL, filepat ="P\\d\\d"){
   attentions <- NULL
   
-  for (f in list.files(inloc)) {
+  for (f in list.files(inloc, pattern = filepat)) {
     
-    p <- stringr::str_extract(f, "P\\d\\d")[1]    
+    p <- stringr::str_extract(f, filepat)[1]    
     
     thisattention <- loadSpotTheDifferenceFile(paste0(inloc, f), keyfile = keyfile,
                                                participantCode = p)
