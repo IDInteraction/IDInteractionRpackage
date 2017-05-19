@@ -1,6 +1,6 @@
 Package: IDInteraction
 Type: Package
-Title: Functions to analyse data from the IDinteraction project
+Title: Functions to analyse data from the IDinteraction project.
 Version: 0.1.0
 Author: David Mawdsley <david.mawdsley@manchester.ac.uk>
 Maintainer: David Mawdsley <david.mawdsley@manchester.ac.uk>
