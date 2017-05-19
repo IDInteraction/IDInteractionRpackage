@@ -19,23 +19,23 @@ loadSpotTheDifferenceFile <- function(infile, keyfile = NULL, participantCode,
                 "attTransEndhms",
                 "attTransEndss",
                 "attTransEndms",
-                "attDurationhms",
-                "attDurationss",
-                "attDurationms",
+                "attTransTimehms",
+                "attTransTimess",
+                "attTransTimems",
                 "annotation")
   # Participant 16 doesn't have times in ms recorded
   col_names16 = c("eventtype",
-                  "null",
-                  "attTransStarthms",
-                  "attTransStartss",
-                  #"attTransStartms",
-                  "attTransEndhms",
-                  "attTransEndss",
-                  #"attTransEndms",
-                  "attDurationhms",
-                  "attDurationss",
-                  #"attDurationms",
-                  "annotation")
+                "null",
+                "attTransStarthms",
+                "attTransStartss",
+               # "attTransStartms",
+                "attTransEndhms",
+                "attTransEndss",
+               # "attTransEndms",
+                "attTransTimehms",
+                "attTransTimess",
+               # "attTransTimems",
+                "annotation")
   
   attentions <- readr::read_delim(infile, 
                                   delim = "\t",
@@ -52,7 +52,7 @@ loadSpotTheDifferenceFile <- function(infile, keyfile = NULL, participantCode,
   attentions <- attentions[, names(attentions)[is.na(stringr::str_match(names(attentions), "hms"))]]
   
   # remove dummy column
-  attentions <- attentions[,!(names(attentions)=="null")]
+  attentions <- attentions[,!(names(attentions) == "null")]
   
   # Correct typing errors
   attentions$annotation <- recodevalues(attentions$annotation, "TV_to_+tablet",
@@ -160,7 +160,7 @@ loadSpotTheDifferenceFile <- function(infile, keyfile = NULL, participantCode,
           participantCode = eventkeyByTimestamp$participantCode,
           attTransStartss = eventkeyByTimestamp$timestamp,
           attTransEndss = eventkeyByTimestamp$timestamp,
-          attDurationss = 0,
+          attTransTimess = 0,
           annotation = eventkeyByTimestamp$event)
         
         attentions <- rbind(attentions,timestampevents)
