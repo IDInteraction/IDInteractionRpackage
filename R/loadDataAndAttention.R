@@ -169,3 +169,41 @@ loadcppMTAndAttention <- function(attentionfile,
   return(featureset)
   
 }
+
+
+#' Get the time an event occured at
+#' 
+#' Using the annotation data in attentiondata, return the time an event occured at
+#' 
+#' 
+#' @param participantCode the participant code
+#' @param experimentpart the part of the experiment (1 or 2)
+#' @param event the event (start or end)
+#' @param attentiondata the data frame containing the attentiondata
+#' @param attentionpoint what point in the attention transition to take
+#' 
+#' @export
+getEventTime <- function(participantCode, experimentpart, event, attentiondata, 
+                         attentionpoint = "attTransMidss"){
+  
+  
+  # Get the frame number that an experiemnt part start/ends at
+  part <- stringr::str_match(experimentpart, "\\d+")
+  if (is.na(part)) {
+    stop("Experiment part could not be extracted")
+  }
+  
+  eventstring <- paste0(event, part)
+  
+  eventdata <- attentiondata[attentiondata$eventtype == "event" & 
+                               attentiondata$participantCode == participantCode &
+                               attentiondata$annotation == eventstring,] 
+  if (nrow(eventdata) > 1) {
+    stop("Multiple events matched")
+  } else if (nrow(eventdata) == 0) {
+    return(NA)
+  } else {
+    attentiontime <- eventdata[[attentionpoint]]
+    return(attentiontime)
+  }
+}
