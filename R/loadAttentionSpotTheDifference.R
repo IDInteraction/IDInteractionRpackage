@@ -193,11 +193,13 @@ loadSpotTheDifferenceFile <- function(infile, keyfile = NULL, participantCode,
 #' 
 #' @return A data table contaning the ground truth data for all participants found in inloc
 #' @export
-loadSpotTheDifference <- function(inloc, keyfile = NULL, filepat ="P\\d\\d"){
+loadSpotTheDifference <- function(inloc, keyfile = NULL, filepat ="P\\d\\d", verbose = FALSE){
   attentions <- NULL
   
   for (f in list.files(inloc, pattern = filepat)) {
-    
+    if(verbose){
+      print(paste("Reading file:", f))
+    } 
     p <- stringr::str_extract(f, filepat)[1]    
     
     thisattention <- loadSpotTheDifferenceFile(paste0(inloc, f), keyfile = keyfile,
